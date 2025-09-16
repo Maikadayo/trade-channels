@@ -14,8 +14,22 @@
     --accent3:#bfbfc6;   /* 3rd */
     --ink:#e8eef4;
   }
-  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1200px;margin:20px auto 120px;padding:0 18px;position:relative}
+
+  html,body{
+    height:100%;
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif
+  }
+
+  /* 中央寄せを強化（幅を少し狭めて常に中央に） */
+  .wrap{
+    max-width:980px;
+    margin:20px auto 120px;
+    padding:0 18px;
+    position:relative
+  }
 
   .banner{display:flex;justify-content:center;align-items:center;margin:8px 0 18px}
   .banner span{letter-spacing:.08em;font-weight:900}
@@ -32,7 +46,10 @@
     border:1px solid #2a3640; border-radius:16px;
     padding:16px 16px 14px; position:relative; box-shadow:0 14px 28px rgba(0,0,0,.35);
     display:grid; grid-template-columns:46px 1fr; gap:10px; align-items:center;
+    cursor:pointer; /* クリック可能 */
   }
+  .card.active{ outline:2px solid var(--wire); outline-offset:2px; } /* 選択中の見た目 */
+
   .card .cap{position:absolute;inset:8px 8px auto 8px;height:8px;border-radius:10px;background:var(--band,#444)}
   .title{font-weight:900}
   .sub{font-size:13px;opacity:.8;margin-top:2px;line-height:1.35}
@@ -45,15 +62,22 @@
   }
   .ico svg{width:26px;height:26px}
 
-  /* SVG 配線 */
-  .svgLayer{position:absolute;inset:0;pointer-events:none;z-index:0}
+  /* SVG 配線（カードより前面に） */
+  .svgLayer{position:absolute;inset:0;pointer-events:none;z-index:5}
   svg{width:100%;height:100%}
-  .wire{stroke:var(--wire);stroke-width:3.2;fill:none;marker-end:url(#arrow);
-        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.55))}
+  .wire{
+    stroke:var(--wire);stroke-width:3.2;fill:none;marker-end:url(#arrow);
+    stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.55))
+  }
   .joint{fill:#d8dee6;stroke:#8a949d;stroke-width:1.2}
 
-  .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:#2b3640;color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35)}
+  .replay{
+    position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
+    border:0;background:#2b3640;color:#fff;padding:10px 16px;border-radius:12px;
+    font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35)
+  }
 </style>
+
 </head>
 <body>
 <div class="wrap" id="wrap">
@@ -273,7 +297,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* 接続（既存のまま） */
+/* 接続（そのまま） */
 const EDGES = [
   ["start","n1_prices"], ["start","n1_export"],
   ["n1_prices","n21_steelPrice"], ["n1_prices","n22_steelGoods"],
@@ -288,7 +312,10 @@ const EDGES = [
 const wrap   = document.getElementById("wrap");
 const wiresG = document.getElementById("wires");
 
-/* カードの中心下→水平→カード上手前 で止めるパス */
+/* 既に描画済みのエッジを記録して重複を避ける（累積表示用） */
+const drawnEdges = new Set();
+
+/* 下→横→下（カード手前で停止） */
 function elbowPath(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f  = fromEl.getBoundingClientRect();
@@ -296,11 +323,10 @@ function elbowPath(fromEl, toEl){
   const sx = f.left + f.width/2 - wb.left;
   const sy = f.bottom - wb.top + 8;
   const tx = t.left + t.width/2 - wb.left;
-  const CLEAR = 12;                                  // 先端が隠れない余白
+  const CLEAR = 12;                     // 先端がカードに潜らない余白
   const ty = t.top - wb.top - CLEAR;
 
-  const my = (sy + (t.top - wb.top)) / 2;
-  const r  = 10;
+  const my = (sy + (t.top - wb.top)) / 2, r = 10;
   const v1 = `M ${sx} ${sy} L ${sx} ${my-r}`;
   const c1 = `Q ${sx} ${my} ${sx+(tx>sx? r:-r)} ${my}`;
   const h  = `L ${tx-(tx>sx? r:-r)} ${my}`;
@@ -309,83 +335,88 @@ function elbowPath(fromEl, toEl){
   return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
 
-/* 指定ソースIDからの配線だけ描画 */
-function drawWiresFrom(sourceId){
-  wiresG.innerHTML = "";
+/* 単一エッジを（未描画なら）追加してアニメ表示 */
+function addEdgeAnimated(aId, bId){
+  const key = `${aId}->${bId}`;
+  if (drawnEdges.has(key)) return;          // 既にあるならスキップ（残す）
+  drawnEdges.add(key);
 
-  // アクティブ表示切替
-  document.querySelectorAll(".card").forEach(el=>el.classList.remove("active"));
-  const srcEl = document.getElementById(sourceId);
-  if(!srcEl) return;
-  srcEl.classList.add("active");
+  const fromEl = document.getElementById(aId);
+  const toEl   = document.getElementById(bId);
+  if(!fromEl || !toEl) return;
 
-  // 出口エッジ（sourceId発）だけ抽出
-  const outs = EDGES.filter(([a,_]) => a === sourceId);
+  // path
+  const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+  p.setAttribute("class","wire");
+  p.setAttribute("d", elbowPath(fromEl, toEl));
+  wiresG.appendChild(p);
 
-  outs.forEach(([a,b])=>{
-    const fromEl = document.getElementById(a);
-    const toEl   = document.getElementById(b);
+  // 長さを取得して線をゼロから描く
+  const L = p.getTotalLength ? p.getTotalLength() : 1;
+  p.style.strokeDasharray  = L;
+  p.style.strokeDashoffset = L;
 
-    // path
-    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
-    p.setAttribute("class","wire");
-    p.setAttribute("d", elbowPath(fromEl, toEl));
-    // ストロークの準備（線をゼロから描く）
-    const L = p.getTotalLength ? p.getTotalLength() : 1;
-    p.style.strokeDasharray  = L;
-    p.style.strokeDashoffset = L;
-    wiresG.appendChild(p);
+  // 矢印アニメ
+  gsap.to(p, {strokeDashoffset:0, duration:1.0, ease:"power2.out"});
 
-    // ジョイント（視認性UP）
-    const wb = wrap.getBoundingClientRect();
-    const fa = fromEl.getBoundingClientRect();
-    const ta = toEl.getBoundingClientRect();
-    const cy = (fa.bottom - wb.top + ta.top - wb.top)/2;
-    [ [fa.left+fa.width/2 - wb.left, cy-12],
-      [ta.left+ta.width/2 - wb.left, cy+12] ].forEach(([cx,cy2])=>{
-        const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
-        c.setAttribute("class","joint"); c.setAttribute("cx",cx); c.setAttribute("cy",cy2); c.setAttribute("r","4.2");
-        wiresG.appendChild(c);
-    });
-
-    // 目的地カードをフェードイン（既に表示済みでもOK）
-    gsap.to(toEl, {opacity:1, y:0, duration:.4, ease:"power2.out"});
-
-    // 線を描くアニメ
-    gsap.to(p, {strokeDashoffset:0, duration:1.0, ease:"power2.out"});
+  // 視認性アップのジョイント
+  const wb = wrap.getBoundingClientRect();
+  const fa = fromEl.getBoundingClientRect();
+  const ta = toEl.getBoundingClientRect();
+  const cy = (fa.bottom - wb.top + ta.top - wb.top)/2;
+  [ [fa.left+fa.width/2 - wb.left, cy-12],
+    [ta.left+ta.width/2 - wb.left, cy+12] ].forEach(([cx,cy2])=>{
+      const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute("class","joint"); c.setAttribute("cx",cx); c.setAttribute("cy",cy2); c.setAttribute("r","4.2");
+      wiresG.appendChild(c);
   });
 }
 
-/* 初期状態：全カード表示、配線は空 */
+/* 指定カードから出る全エッジを追加（累積） */
+function addEdgesFrom(sourceId){
+  // アクティブ表示
+  document.querySelectorAll(".card").forEach(el=>el.classList.remove("active"));
+  const src = document.getElementById(sourceId);
+  if (src) src.classList.add("active");
+
+  EDGES.filter(([a,_]) => a === sourceId)
+       .forEach(([a,b]) => addEdgeAnimated(a,b));
+}
+
+/* 初期化：全カードは常に表示、クリックで配線を追加していく */
 function init(){
-  // すべてのカードは表示（自動再生なし）
+  // 全カードを表示済みに
   document.querySelectorAll(".card").forEach(el=>{
     gsap.set(el, {opacity:1, y:0});
-    // クリックでそのカードからの矢印だけ出す
-    el.addEventListener("click", e=>{
-      const id = el.id;
-      drawWiresFrom(id);
-    });
+    el.addEventListener("click", ()=> addEdgesFrom(el.id));
   });
 
-  // リサイズで再描画（今アクティブなカードがあれば）
-  window.addEventListener("resize", ()=>{
-    const active = document.querySelector(".card.active");
-    if(active) drawWiresFrom(active.id);
-  });
-
-  // 「Again」はクリアとして使う（全配線削除＆選択解除）
+  // 右下ボタン：全線クリア
   document.getElementById("replay").addEventListener("click", ()=>{
+    drawnEdges.clear();
     wiresG.innerHTML = "";
     document.querySelectorAll(".card").forEach(el=>el.classList.remove("active"));
+  });
+
+  // リサイズ時：いったん再描画（累積内容を復元）
+  window.addEventListener("resize", ()=>{
+    const edges = Array.from(drawnEdges);
+    wiresG.innerHTML = "";
+    drawnEdges.clear();
+    edges.forEach(k=>{
+      const [a,b] = k.split("->");
+      addEdgeAnimated(a,b);
+    });
   });
 }
 
 init();
 </script>
 
+
 </body>
 </html>
+
 
 
 
