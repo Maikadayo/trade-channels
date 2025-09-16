@@ -3,49 +3,53 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Flow Diagram (Top-Down) – Excess Capacity → 1st / 2nd / 3rd</title>
+<title>Top-Down Flow — Excess Capacity → 1st / 2nd / 3rd（ゆっくり順次）</title>
 <style>
   :root{
-    --bg:#0f1419;         /* ダーク背景（添付に寄せた雰囲気） */
+    --bg:#0f1419;
     --panel:#1c242c;
-    --wire:#f4b000;       /* 配線色：オレンジ */
-    --accent1:#f4b000;    /* 1st */
-    --accent2:#00b0b9;    /* 2nd */
-    --accent3:#bfbfc6;    /* 3rd */
-    --ink:#e8eef4;        /* 文字色 */
+    --wire:#f4b000;      /* 配線色（オレンジ） */
+    --accent1:#f4b000;   /* 1st */
+    --accent2:#00b0b9;   /* 2nd */
+    --accent3:#bfbfc6;   /* 3rd */
+    --ink:#e8eef4;
   }
   html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   .wrap{max-width:1200px;margin:20px auto 120px;padding:0 18px;position:relative}
 
-  /* 章タイトル（画像の “BEFORE YOU TRADE” 的な帯） */
   .banner{display:flex;justify-content:center;align-items:center;margin:8px 0 18px}
   .banner span{letter-spacing:.08em;font-weight:900}
-  .banner .hi{color:var(--accent1)}
-  .banner .lo{color:#cfd6dc}
+  .banner .hi{color:var(--accent1)} .banner .lo{color:#cfd6dc}
 
-  /* レイヤ（縦方向に並べ、各レイヤでカードを横並び） */
-  .layers{display:grid;gap:38px;position:relative}
+  .layers{display:grid;gap:46px;position:relative}
   .layer{position:relative;padding:10px 10px 0}
   .row{display:flex;gap:18px;flex-wrap:nowrap;justify-content:center}
 
-  /* カード（角丸・立体風） */
+  /* カード */
   .card{
-    min-width:220px; max-width:280px;
+    min-width:260px; max-width:320px;
     background:linear-gradient(180deg,#222b33,#1a222a);
     border:1px solid #2a3640; border-radius:16px;
     padding:16px 16px 14px; position:relative; box-shadow:0 14px 28px rgba(0,0,0,.35);
+    display:grid; grid-template-columns:46px 1fr; gap:10px; align-items:center;
   }
-  .card .cap{position:absolute;inset:8px 8px auto 8px;height:8px;border-radius:10px;
-             background:var(--band,#444)}
+  .card .cap{position:absolute;inset:8px 8px auto 8px;height:8px;border-radius:10px;background:var(--band,#444)}
   .title{font-weight:900}
-  .sub{font-size:13px;opacity:.8;margin-top:6px;line-height:1.35}
-  .tag{margin-top:8px;font-weight:900;color:#000;background:var(--band,#666);display:inline-block;padding:2px 8px;border-radius:999px}
+  .sub{font-size:13px;opacity:.8;margin-top:2px;line-height:1.35}
+  .tag{margin-top:6px;font-weight:900;color:#000;background:var(--band,#666);display:inline-block;padding:2px 8px;border-radius:999px}
+
+  /* アイコンバッジ */
+  .ico{
+    width:46px;height:46px;border-radius:12px;background:#0e1419;
+    display:grid;place-items:center;border:1px solid #31404b;
+  }
+  .ico svg{width:26px;height:26px}
 
   /* SVG 配線 */
   .svgLayer{position:absolute;inset:0;pointer-events:none;z-index:0}
   svg{width:100%;height:100%}
-  .wire{stroke:var(--wire);stroke-width:3;fill:none;marker-end:url(#arrow);
-        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.5))}
+  .wire{stroke:var(--wire);stroke-width:3.2;fill:none;marker-end:url(#arrow);
+        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.55))}
   .joint{fill:#d8dee6;stroke:#8a949d;stroke-width:1.2}
 
   .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:#2b3640;color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35)}
@@ -64,9 +68,18 @@
       <div class="row">
         <div class="card" id="start" style="--band:var(--accent1)">
           <div class="cap"></div>
-          <div class="title">EXCESS CAPACITY</div>
-          <div class="sub">in a major market</div>
-          <div class="tag">START</div>
+          <div class="ico" aria-hidden="true">
+            <!-- factory-like capacity -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M3 20V9l5 3V9l5 3V8l8 4v8H3Z" stroke="#f4b000" stroke-width="2"/>
+              <path d="M6 20v-4m3 4v-4m3 4v-4m3 4v-4m3 4v-4" stroke="#7a8a96" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">EXCESS CAPACITY</div>
+            <div class="sub">in a major market</div>
+            <div class="tag">START</div>
+          </div>
         </div>
       </div>
     </div>
@@ -76,15 +89,34 @@
       <div class="row">
         <div class="card" id="n1_prices" style="--band:var(--accent1)">
           <div class="cap"></div>
-          <div class="title">↓ PRICES</div>
-          <div class="sub">First-order price reaction</div>
-          <div class="tag">1st</div>
+          <div class="ico" aria-hidden="true">
+            <!-- price down -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M7 4v12m0 0l-3-3m3 3l3-3" stroke="#f4b000" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="15" cy="9" r="3.5" stroke="#7a8a96"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↓ PRICES</div>
+            <div class="sub">First-order price reaction</div>
+            <div class="tag">1st</div>
+          </div>
         </div>
+
         <div class="card" id="n1_export" style="--band:var(--accent1)">
           <div class="cap"></div>
-          <div class="title">↑ EXPORT</div>
-          <div class="sub">Push to ship out surplus</div>
-          <div class="tag">1st</div>
+          <div class="ico" aria-hidden="true">
+            <!-- export/ship -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M3 14h8l2-3h8l-2 6H6l-3-3Z" stroke="#f4b000" stroke-width="2"/>
+              <path d="M10 6l4 4M14 6l-4 4" stroke="#7a8a96" stroke-width="1.6"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ EXPORT</div>
+            <div class="sub">Push to ship out surplus</div>
+            <div class="tag">1st</div>
+          </div>
         </div>
       </div>
     </div>
@@ -94,28 +126,78 @@
       <div class="row" id="row2">
         <div class="card" id="n21_steelPrice" style="--band:var(--accent2)">
           <div class="cap"></div>
-          <div class="title">↓ STEEL PRICES</div>
-          <div class="tag">2nd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- steel bar down -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="8" width="14" height="4" rx="2" stroke="#00b0b9" stroke-width="2"/>
+              <path d="M20 6v8m0 0l-2-2m2 2l2-2" stroke="#7ad7df" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↓ STEEL PRICES</div>
+            <div class="tag">2nd</div>
+          </div>
         </div>
+
         <div class="card" id="n22_steelGoods" style="--band:var(--accent2)">
           <div class="cap"></div>
-          <div class="title">↑ STEEL-BASED GOODS</div>
-          <div class="tag">2nd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- factory/gear -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M3 20v-6l4 2v-3l4 2v-4l6 3v6H3Z" stroke="#00b0b9" stroke-width="2"/>
+              <circle cx="18.5" cy="8.5" r="2.5" stroke="#7ad7df"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ STEEL-BASED GOODS</div>
+            <div class="tag">2nd</div>
+          </div>
         </div>
+
         <div class="card" id="n23_exportSqueeze" style="--band:var(--accent2)">
           <div class="cap"></div>
-          <div class="title">↑ EXPORT SQUEEZE</div>
-          <div class="tag">2nd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- clamp -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 6h12v4H5z" stroke="#00b0b9" stroke-width="2"/>
+              <path d="M7 10v8m10-8v8" stroke="#7ad7df" stroke-width="2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ EXPORT SQUEEZE</div>
+            <div class="tag">2nd</div>
+          </div>
         </div>
+
         <div class="card" id="n24_detour" style="--band:var(--accent2)">
           <div class="cap"></div>
-          <div class="title">↑ DETOUR TRADE</div>
-          <div class="tag">2nd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- detour arrow -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 18c8-1 2-10 14-11" stroke="#00b0b9" stroke-width="2"/>
+              <path d="M17 5l4 3-4 3" fill="#7ad7df"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ DETOUR TRADE</div>
+            <div class="tag">2nd</div>
+          </div>
         </div>
+
         <div class="card" id="n25_policy" style="--band:var(--accent2)">
           <div class="cap"></div>
-          <div class="title">↑ POLICY PUSHBACK</div>
-          <div class="tag">2nd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- gavel/shield -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 18h10" stroke="#7ad7df" stroke-width="2"/>
+              <path d="M9 6l5 5M11 4l5 5" stroke="#00b0b9" stroke-width="2"/>
+              <path d="M16 10l4 4" stroke="#7ad7df" stroke-width="2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ POLICY PUSHBACK</div>
+            <div class="tag">2nd</div>
+          </div>
         </div>
       </div>
     </div>
@@ -125,23 +207,62 @@
       <div class="row">
         <div class="card" id="n31_marketShare" style="--band:var(--accent3)">
           <div class="cap"></div>
-          <div class="title">↓ MARKET SHARE</div>
-          <div class="tag">3rd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- pie down -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="7" stroke="#bfbfc6"/>
+              <path d="M12 5v7l5 5" stroke="#bfbfc6" stroke-width="2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↓ MARKET SHARE</div>
+            <div class="tag">3rd</div>
+          </div>
         </div>
+
         <div class="card" id="n32_indirectExports" style="--band:var(--accent3)">
           <div class="cap"></div>
-          <div class="title">↑ INDIRECT EXPORTS</div>
-          <div class="tag">3rd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- route arrows -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M4 8h8m0 0l-3-3m3 3l-3 3" stroke="#bfbfc6" stroke-width="2"/>
+              <path d="M12 16h8m0 0l-3-3m3 3l-3 3" stroke="#9ea3aa" stroke-width="2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ INDIRECT EXPORTS</div>
+            <div class="tag">3rd</div>
+          </div>
         </div>
+
         <div class="card" id="n33_indirectTrade" style="--band:var(--accent3)">
           <div class="cap"></div>
-          <div class="title">↑ INDIRECT TRADE</div>
-          <div class="tag">3rd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- globe arrows -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="7" stroke="#bfbfc6"/>
+              <path d="M6 12h12M12 5a12 12 0 010 14" stroke="#9ea3aa"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ INDIRECT TRADE</div>
+            <div class="tag">3rd</div>
+          </div>
         </div>
+
         <div class="card" id="n34_reactionary" style="--band:var(--accent3)">
           <div class="cap"></div>
-          <div class="title">↑ REACTIONARY TRADE</div>
-          <div class="tag">3rd</div>
+          <div class="ico" aria-hidden="true">
+            <!-- warning -->
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M12 4l9 16H3L12 4Z" stroke="#bfbfc6" stroke-width="2"/>
+              <path d="M12 9v5M12 18v.5" stroke="#bfbfc6" stroke-width="2"/>
+            </svg>
+          </div>
+          <div>
+            <div class="title">↑ REACTIONARY TRADE</div>
+            <div class="tag">3rd</div>
+          </div>
         </div>
       </div>
     </div>
@@ -164,44 +285,31 @@
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* ------------- 接続（これまで通りの構造） ------------- */
+/* 接続（これまで通り） */
 const EDGES = [
-  // start → 1st
-  ["start","n1_prices"],
-  ["start","n1_export"],
-  // 1st → 2nd
-  ["n1_prices","n21_steelPrice"],
-  ["n1_prices","n22_steelGoods"],
-  ["n1_export","n23_exportSqueeze"],
-  ["n1_export","n24_detour"],
-  ["n1_export","n25_policy"],
-  // 2nd → 3rd
+  ["start","n1_prices"], ["start","n1_export"],
+  ["n1_prices","n21_steelPrice"], ["n1_prices","n22_steelGoods"],
+  ["n1_export","n23_exportSqueeze"], ["n1_export","n24_detour"], ["n1_export","n25_policy"],
   ["n21_steelPrice","n31_marketShare"],
-  ["n22_steelGoods","n31_marketShare"],
-  ["n22_steelGoods","n32_indirectExports"],
-  ["n23_exportSqueeze","n31_marketShare"],
-  ["n23_exportSqueeze","n32_indirectExports"],
-  ["n24_detour","n33_indirectTrade"],
-  ["n24_detour","n34_reactionary"],
+  ["n22_steelGoods","n31_marketShare"], ["n22_steelGoods","n32_indirectExports"],
+  ["n23_exportSqueeze","n31_marketShare"], ["n23_exportSqueeze","n32_indirectExports"],
+  ["n24_detour","n33_indirectTrade"], ["n24_detour","n34_reactionary"],
   ["n25_policy","n34_reactionary"]
 ];
 
-/* ------------- 直交配線（下→横→下）＆ジョイント ------------- */
 const wrap = document.getElementById("wrap");
 const wiresG = document.getElementById("wires");
 
+/* 下→横→下（カード手前で停止） */
 function elbowPath(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f = fromEl.getBoundingClientRect();
   const t = toEl.getBoundingClientRect();
-
   const sx = f.left + f.width/2 - wb.left;
-  const sy = f.bottom - wb.top + 6;             // カード下から少し下へ
+  const sy = f.bottom - wb.top + 8;
   const tx = t.left + t.width/2 - wb.left;
-  const ty = t.top - wb.top - 8;                 // 目的カードの直前で停止
-  const my = (sy + (t.top - wb.top)) / 2;        // 中間水平ライン
-  const r  = 10;
-
+  const ty = t.top - wb.top - 10;
+  const my = (sy + (t.top - wb.top)) / 2, r = 10;
   const v1 = `M ${sx} ${sy} L ${sx} ${my-r}`;
   const c1 = `Q ${sx} ${my} ${sx+(tx>sx? r:-r)} ${my}`;
   const h  = `L ${tx-(tx>sx? r:-r)} ${my}`;
@@ -210,7 +318,7 @@ function elbowPath(fromEl, toEl){
   return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
 
-function draw(){
+function drawWires(){
   wiresG.innerHTML = "";
   EDGES.forEach(([a,b])=>{
     const p = document.createElementNS("http://www.w3.org/2000/svg","path");
@@ -218,40 +326,56 @@ function draw(){
     p.setAttribute("d", elbowPath(document.getElementById(a), document.getElementById(b)));
     wiresG.appendChild(p);
 
-    // 途中の小さなジョイント（丸）を2つほど
+    // ジョイント（視認性UP）
     const wb = wrap.getBoundingClientRect();
     const fa = document.getElementById(a).getBoundingClientRect();
     const ta = document.getElementById(b).getBoundingClientRect();
-    const j1 = document.createElementNS("http://www.w3.org/2000/svg","circle");
-    j1.setAttribute("class","joint");
-    j1.setAttribute("cx", fa.left + fa.width/2 - wb.left);
-    j1.setAttribute("cy", (fa.bottom - wb.top + ta.top - wb.top)/2 - 12);
-    j1.setAttribute("r", 4.2);
-    const j2 = document.createElementNS("http://www.w3.org/2000/svg","circle");
-    j2.setAttribute("class","joint");
-    j2.setAttribute("cx", ta.left + ta.width/2 - wb.left);
-    j2.setAttribute("cy", (fa.bottom - wb.top + ta.top - wb.top)/2 + 12);
-    j2.setAttribute("r", 4.2);
-    wiresG.appendChild(j1); wiresG.appendChild(j2);
+    const cy = (fa.bottom - wb.top + ta.top - wb.top)/2;
+    [ [fa.left+fa.width/2 - wb.left, cy-12],
+      [ta.left+ta.width/2 - wb.left, cy+12] ].forEach(([cx,cy2])=>{
+        const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        c.setAttribute("class","joint"); c.setAttribute("cx",cx); c.setAttribute("cy",cy2); c.setAttribute("r","4.2");
+        wiresG.appendChild(c);
+    });
   });
 }
 
-/* ------------- アニメーション ------------- */
 function prep(p){ const L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; }
 
+/* ゆっくり順次アニメ：L0→(配線)→L1→(配線)→L2→… */
 function play(){
-  draw();
-  const cards = Array.from(document.querySelectorAll(".card"));
-  gsap.set(cards,{opacity:0,y:8});
-  gsap.to(cards,{opacity:1,y:0,stagger:0.06,duration:.45,ease:"power2.out"});
+  drawWires();
+
+  // カードをレイヤごとに
+  const L0 = [document.getElementById("start")];
+  const L1 = ["n1_prices","n1_export"].map(id=>document.getElementById(id));
+  const L2 = ["n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy"].map(id=>document.getElementById(id));
+  const L3 = ["n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"].map(id=>document.getElementById(id));
 
   const wires = Array.from(document.querySelectorAll(".wire"));
   wires.forEach(prep);
-  gsap.to(wires,{strokeDashoffset:0,stagger:0.05,duration:.9,ease:"power2.out",delay:.05});
+
+  const tl = gsap.timeline({defaults:{ease:"power2.out"}});
+
+  // L0
+  gsap.set([ ...L0, ...L1, ...L2, ...L3 ], {opacity:0,y:10});
+  tl.to(L0,{opacity:1,y:0,duration:.6});                 // Start
+  tl.to(wires.slice(0,2),{strokeDashoffset:0,stagger:0.4,duration:1.2}, "+=0.1"); // start→1st（ゆっくり）
+
+  // L1
+  tl.to(L1,{opacity:1,y:0,stagger:0.25,duration:.6}, "-=0.1");
+  tl.to(wires.slice(2,7),{strokeDashoffset:0,stagger:0.35,duration:1.25}, "+=0.15"); // 1st→2nd
+
+  // L2
+  tl.to(L2,{opacity:1,y:0,stagger:0.20,duration:.6}, "-=0.05");
+  tl.to(wires.slice(7),{strokeDashoffset:0,stagger:0.35,duration:1.25}, "+=0.2"); // 2nd→3rd
+
+  // L3
+  tl.to(L3,{opacity:1,y:0,stagger:0.18,duration:.6}, "-=0.05");
 }
 
 play();
-window.addEventListener("resize", draw);
+window.addEventListener("resize", drawWires);
 document.getElementById("replay").addEventListener("click", play);
 </script>
 </body>
