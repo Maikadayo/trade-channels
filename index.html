@@ -3,31 +3,40 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Swimlane Flow (1st → 2nd → 3rd)</title>
+<title>Swimlane Flow (1st → 2nd → 3rd) — refined</title>
 <style>
   :root{
     --bg:#f6f9fc; --lane:#eaf2fb; --ink:#0e5567;
     --box:#ffffff; --boxText:#082a34; --line:#b9cbe3;
   }
   html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1200px;margin:20px auto 90px;padding:0 14px;position:relative}
-  h1{font-size:18px;margin:0 0 8px}
-  /* Swimlanes */
-  .lanes{display:grid;grid-template-rows:auto auto auto;gap:18px;position:relative}
-  .lane{background:var(--lane);border:1px solid var(--line);border-radius:12px;padding:12px 12px 20px;position:relative}
-  .laneTitle{position:absolute;left:12px;top:-11px;background:var(--bg);padding:2px 8px;border:1px solid var(--line);border-radius:8px;font-weight:800}
-  .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-start}
+  .wrap{max-width:1200px;margin:24px auto 100px;padding:0 14px;position:relative}
+  h1{font-size:18px;margin:0 0 10px}
+
+  /* Swimlanes（← 行間を広く） */
+  .lanes{display:grid;grid-template-rows:auto auto auto;gap:42px;position:relative}
+  .lane{background:var(--lane);border:1px solid var(--line);border-radius:14px;padding:16px 12px 24px;position:relative}
+  .laneTitle{position:absolute;left:14px;top:-12px;background:var(--bg);padding:4px 10px;border:1px solid var(--line);border-radius:10px;font-weight:800}
+  .row{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-start}
+  /* 2nd order は必ず横一列（必要なら横スクロール） */
+  .row.nowrap{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#b9cbe3 transparent}
+  .row.nowrap::-webkit-scrollbar{height:8px}
+  .row.nowrap::-webkit-scrollbar-thumb{background:#b9cbe3;border-radius:8px}
+
   .node{
-    min-width:210px; max-width:260px; padding:10px 12px; border-radius:10px;
+    min-width:210px; max-width:260px; padding:12px 14px; border-radius:12px;
     background:var(--box); color:var(--boxText); border:1px solid #dfe7f4;
     box-shadow:0 2px 8px rgba(0,0,0,.06);
     font-weight:800; white-space:nowrap; opacity:0; transform:translateY(6px);
+    position:relative; z-index:2; /* ← 矢印より前面 */
   }
+
   /* SVG overlay for connectors */
-  .svgLayer{position:absolute; inset:0; pointer-events:none}
+  .svgLayer{position:absolute; inset:0; pointer-events:none; z-index:1}
   svg{width:100%;height:100%}
-  .link{stroke:var(--ink);stroke-width:6;fill:none;opacity:.92;marker-end:url(#arrow);
+  .link{stroke:var(--ink);stroke-width:5.5;fill:none;opacity:.95;marker-end:url(#arrow);
         stroke-dasharray:1;stroke-dashoffset:1}
+
   .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16)}
 </style>
 </head>
@@ -48,7 +57,8 @@
     <!-- Lane 2 -->
     <div class="lane" id="lane2">
       <div class="laneTitle">2nd order</div>
-      <div class="row">
+      <!-- ★ 横一列固定 -->
+      <div class="row nowrap">
         <div class="node" id="n21_steelPrice">2.1 ↓ STEEL PRICES</div>
         <div class="node" id="n22_steelGoods">2.2 ↑ STEEL-BASED GOODS</div>
         <div class="node" id="n23_exportSqueeze">2.3 ↑ EXPORT SQUEEZE</div>
@@ -73,8 +83,9 @@
   <div class="svgLayer">
     <svg id="svg">
       <defs>
-        <marker id="arrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
-          <path d="M0,0 L12,6 L0,12 Z" fill="#0e5567"/>
+        <!-- ★ 矢印ヘッドを小型化（8px） -->
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 Z" fill="#0e5567"/>
         </marker>
       </defs>
       <g id="links"></g>
@@ -86,13 +97,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* ====== 配置のコツ ======
-   交差を減らすため、Lane2/3 の並びは以下で想定:
-   Lane2: 2.1 | 2.2 | 2.3 | 2.4 | 2.5
-   Lane3: 3.1 | 3.2 | 3.3 | 3.4
-   （必要なら順番入れ替えOK。矢印は自動配線）
-============================================ */
-
+/* ===== 接続定義（そのまま） ===== */
 const edges = [
   // 1st → 2nd
   ["n1_prices","n21_steelPrice"],
@@ -114,24 +119,29 @@ const edges = [
 const wrap = document.getElementById("wrap");
 const linksG = document.getElementById("links");
 
-// 直交配線：下へ→水平→下（スイムレーンに合う形）
+/* 直交配線：下→水平→下
+   ★ テキストにかからないよう、始点/終点をボックスから少し離す */
+const START_GAP = 6;   // ボックス下から少し離して開始
+const END_GAP   = 10;  // 目標ボックス手前で止める（▶がかからない）
+
 function orthPath(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f = fromEl.getBoundingClientRect();
   const t = toEl.getBoundingClientRect();
 
   const sx = f.left + f.width/2 - wb.left;
-  const sy = f.bottom - wb.top;
+  const sy = f.bottom - wb.top + START_GAP;     // 下方向に少し出してから
   const tx = t.left + t.width/2 - wb.left;
-  const ty = t.top - wb.top;
+  const ty = t.top - wb.top - END_GAP;          // ★ ボックス手前で止める
 
-  const midY = (sy + ty) / 2; // 中間の水平ライン
-  // 僅かな丸み
-  const r = 14;
-  const v1 = `M ${sx} ${sy} L ${sx} ${midY-r}`;
-  const c1 = `Q ${sx} ${midY} ${sx+(tx>sx? r:-r)} ${midY}`;
-  const h  = `L ${tx-(tx>sx? r:-r)} ${midY}`;
-  const c2 = `Q ${tx} ${midY} ${tx} ${midY+r}`;
+  // 中間の水平ライン（上下のちょうど真ん中）
+  const midY = (sy + (t.top - wb.top)) / 2;
+  const r = 12; // 角の丸み
+
+  const v1 = `M ${sx} ${sy} L ${sx} ${midY - r}`;
+  const c1 = `Q ${sx} ${midY} ${sx + (tx>sx? r:-r)} ${midY}`;
+  const h  = `L ${tx - (tx>sx? r:-r)} ${midY}`;
+  const c2 = `Q ${tx} ${midY} ${tx} ${midY + r}`;
   const v2 = `L ${tx} ${ty}`;
   return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
@@ -155,7 +165,7 @@ function prep(p){
   p.style.strokeDashoffset = len;
 }
 
-// 再生
+// アニメ
 const nodeIds = [
   "n1_prices","n1_export",
   "n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy",
