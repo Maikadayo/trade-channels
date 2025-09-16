@@ -1,218 +1,281 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Swimlane Flow (1st → 2nd → 3rd) — refined</title>
+<title>Accordion Flow — 1st → 2nd → 3rd</title>
 <style>
   :root{
-    --bg:#f6f9fc; --lane:#eaf2fb; --ink:#0e5567;
-    --box:#ffffff; --boxText:#082a34; --line:#b9cbe3;
+    --bg:#f7fafc;
+    --ink:#0e5567;
+    --muted:#5b7b86;
+    --panel:#ffffff;
+    --border:#d9e5ee;
+    --accent:#0e5567;
+    --chip1:#e4faf6;
+    --chip2:#e7f0ff;
+    --chip3:#efe7ff;
   }
-  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1200px;margin:24px auto 100px;padding:0 14px;position:relative}
-  h1{font-size:18px;margin:0 0 10px}
+  html,body{height:100%;margin:0;background:var(--bg);color:#0a2b33;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:900px;margin:28px auto 80px;padding:0 14px}
+  h1{font-size:20px;margin:0 0 12px}
+  p.hint{color:#55737e;margin:0 0 18px}
 
-  /* Swimlanes（← 行間を広く） */
-  .lanes{display:grid;grid-template-rows:auto auto auto;gap:42px;position:relative}
-  .lane{background:var(--lane);border:1px solid var(--line);border-radius:14px;padding:16px 12px 24px;position:relative}
-  .laneTitle{position:absolute;left:14px;top:-12px;background:var(--bg);padding:4px 10px;border:1px solid var(--line);border-radius:10px;font-weight:800}
-  .row{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-start}
-  /* 2nd order は必ず横一列（必要なら横スクロール） */
-  .row.nowrap{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#b9cbe3 transparent}
-  .row.nowrap::-webkit-scrollbar{height:8px}
-  .row.nowrap::-webkit-scrollbar-thumb{background:#b9cbe3;border-radius:8px}
+  /* Controls */
+  .controls{display:flex;gap:8px;margin:8px 0 16px}
+  .btn{border:1px solid var(--border);background:var(--panel);color:#0a2b33;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+  .btn.primary{background:var(--accent);color:#fff;border-color:transparent}
 
-  .node{
-    min-width:210px; max-width:260px; padding:12px 14px; border-radius:12px;
-    background:var(--box); color:var(--boxText); border:1px solid #dfe7f4;
-    box-shadow:0 2px 8px rgba(0,0,0,.06);
-    font-weight:800; white-space:nowrap; opacity:0; transform:translateY(6px);
-    position:relative; z-index:2; /* ← 矢印より前面 */
+  /* Accordion */
+  .section{background:var(--panel);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:12px;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+  .head{
+    display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border:0;background:transparent;cursor:pointer;
   }
+  .head:hover{background:#f1f6fa}
+  .caret{transition:transform .25s ease; width:18px;height:18px;flex:0 0 18px}
+  .title{font-weight:800}
+  .badge{margin-left:auto;color:#fff;font-size:12px;font-weight:800;padding:4px 8px;border-radius:999px;background:var(--ink)}
+  .panel{height:0;overflow:hidden;border-top:1px solid var(--border);background:#fcfeff}
+  .panelInner{padding:10px 14px 6px;display:grid;gap:8px}
 
-  /* SVG overlay for connectors */
-  .svgLayer{position:absolute; inset:0; pointer-events:none; z-index:1}
-  svg{width:100%;height:100%}
-  .link{stroke:var(--ink);stroke-width:5.5;fill:none;opacity:.95;marker-end:url(#arrow);
-        stroke-dasharray:1;stroke-dashoffset:1}
+  /* Node chips inside panels */
+  .chip{
+    display:flex;align-items:center;gap:8px;
+    padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;
+    font-weight:800; color:#0a2b33;
+  }
+  .chip .tag{font-size:11px;font-weight:900;color:var(--muted);background:#eef3f7;border:1px solid var(--border);padding:2px 6px;border-radius:999px}
+  .chip.order1{background:var(--chip1)}
+  .chip.order2{background:var(--chip2)}
+  .chip.order3{background:var(--chip3)}
 
-  .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16)}
+  /* nested accordion tweaks */
+  .subblock{margin-left:8px}
+  .empty{color:#7c96a0;font-size:13px;padding:6px 0 2px}
 </style>
 </head>
 <body>
-<div class="wrap" id="wrap">
-  <h1>Swimlane：1st → 2nd → 3rd order</h1>
+<div class="wrap">
+  <h1>Accordion：1st → 2nd → 3rd order</h1>
+  <p class="hint">1st 項目をクリック → 関連する 2nd を表示。さらに 2nd をクリック → 関連する 3rd を表示。</p>
 
-  <div class="lanes" id="lanes">
-    <!-- Lane 1 -->
-    <div class="lane" id="lane1">
-      <div class="laneTitle">1st order</div>
-      <div class="row">
-        <div class="node" id="n1_prices">1. ↓ PRICES</div>
-        <div class="node" id="n1_export">2. ↑ EXPORT</div>
-      </div>
-    </div>
-
-    <!-- Lane 2 -->
-    <div class="lane" id="lane2">
-      <div class="laneTitle">2nd order</div>
-      <!-- ★ 横一列固定 -->
-      <div class="row nowrap">
-        <div class="node" id="n21_steelPrice">2.1 ↓ STEEL PRICES</div>
-        <div class="node" id="n22_steelGoods">2.2 ↑ STEEL-BASED GOODS</div>
-        <div class="node" id="n23_exportSqueeze">2.3 ↑ EXPORT SQUEEZE</div>
-        <div class="node" id="n24_detour">2.4 ↑ DETOUR TRADE</div>
-        <div class="node" id="n25_policy">2.5 ↑ POLICY PUSHBACK</div>
-      </div>
-    </div>
-
-    <!-- Lane 3 -->
-    <div class="lane" id="lane3">
-      <div class="laneTitle">3rd order</div>
-      <div class="row">
-        <div class="node" id="n31_marketShare">3.1 ↓ MARKET SHARE</div>
-        <div class="node" id="n32_indirectExports">3.2 ↑ INDIRECT EXPORTS</div>
-        <div class="node" id="n33_indirectTrade">3.3 ↑ INDIRECT TRADE</div>
-        <div class="node" id="n34_reactionary">3.4 ↑ REACTIONARY TRADE</div>
-      </div>
-    </div>
+  <div class="controls">
+    <button class="btn primary" id="expandAll">全て展開</button>
+    <button class="btn" id="collapseAll">全て折りたたみ</button>
   </div>
 
-  <!-- connectors -->
-  <div class="svgLayer">
-    <svg id="svg">
-      <defs>
-        <!-- ★ 矢印ヘッドを小型化（8px） -->
-        <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
-          <path d="M0,0 L8,4 L0,8 Z" fill="#0e5567"/>
-        </marker>
-      </defs>
-      <g id="links"></g>
-    </svg>
-  </div>
-
-  <button class="replay" id="replay">▶ もう一度再生</button>
+  <!-- ====== ここに自動生成 ====== -->
+  <div id="root"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* ===== 接続定義（そのまま） ===== */
-const edges = [
+/* ===================== データ定義（ご指定の最新フロー） ===================== */
+const NODES = {
+  // 1st
+  "1_prices":         {label:"1. ↓ PRICES", order:1},
+  "1_export":         {label:"2. ↑ EXPORT", order:1},
+  // 2nd
+  "2_1_steelPrice":   {label:"2.1 ↓ STEEL PRICES", order:2},
+  "2_2_steelGoods":   {label:"2.2 ↑ STEEL-BASED GOODS", order:2},
+  "2_3_exportSq":     {label:"2.3 ↑ EXPORT SQUEEZE", order:2},
+  "2_4_detour":       {label:"2.4 ↑ DETOUR TRADE", order:2},
+  "2_5_policy":       {label:"2.5 ↑ POLICY PUSHBACK", order:2},
+  // 3rd
+  "3_1_marketShare":  {label:"3.1 ↓ MARKET SHARE", order:3},
+  "3_2_indirectExp":  {label:"3.2 ↑ INDIRECT EXPORTS", order:3},
+  "3_3_indirectTrade":{label:"3.3 ↑ INDIRECT TRADE", order:3},
+  "3_4_reactionary":  {label:"3.4 ↑ REACTIONARY TRADE", order:3},
+};
+
+// edges: from -> to
+const EDGES = [
   // 1st → 2nd
-  ["n1_prices","n21_steelPrice"],
-  ["n1_prices","n22_steelGoods"],
-  ["n1_export","n23_exportSqueeze"],
-  ["n1_export","n24_detour"],
-  ["n1_export","n25_policy"],
+  ["1_prices","2_1_steelPrice"],
+  ["1_prices","2_2_steelGoods"],
+  ["1_export","2_3_exportSq"],
+  ["1_export","2_4_detour"],
+  ["1_export","2_5_policy"],
   // 2nd → 3rd
-  ["n21_steelPrice","n31_marketShare"],
-  ["n22_steelGoods","n31_marketShare"],
-  ["n22_steelGoods","n32_indirectExports"],
-  ["n23_exportSqueeze","n31_marketShare"],
-  ["n23_exportSqueeze","n32_indirectExports"],
-  ["n24_detour","n33_indirectTrade"],
-  ["n24_detour","n34_reactionary"],
-  ["n25_policy","n34_reactionary"]
+  ["2_1_steelPrice","3_1_marketShare"],
+  ["2_2_steelGoods","3_1_marketShare"],
+  ["2_2_steelGoods","3_2_indirectExp"],
+  ["2_3_exportSq","3_1_marketShare"],
+  ["2_3_exportSq","3_2_indirectExp"],
+  ["2_4_detour","3_3_indirectTrade"],
+  ["2_4_detour","3_4_reactionary"],
+  ["2_5_policy","3_4_reactionary"],
 ];
 
-const wrap = document.getElementById("wrap");
-const linksG = document.getElementById("links");
+/* ===================== ユーティリティ（隣接リスト） ===================== */
+const childrenOf = {};
+EDGES.forEach(([a,b])=>{
+  if(!childrenOf[a]) childrenOf[a] = [];
+  childrenOf[a].push(b);
+});
+function kids(id){ return (childrenOf[id]||[]).map(k=>NODES[k]); }
 
-/* 直交配線：下→水平→下
-   ★ テキストにかからないよう、始点/終点をボックスから少し離す */
-const START_GAP = 6;   // ボックス下から少し離して開始
-const END_GAP   = 10;  // 目標ボックス手前で止める（▶がかからない）
+/* ===================== DOM 生成 ===================== */
+const root = document.getElementById("root");
 
-function orthPath(fromEl, toEl){
-  const wb = wrap.getBoundingClientRect();
-  const f = fromEl.getBoundingClientRect();
-  const t = toEl.getBoundingClientRect();
+// 1st セクションを作る
+const FIRSTS = ["1_prices","1_export"]; // 表示順
+FIRSTS.forEach(fid=>{
+  const sec = makeSection(NODES[fid].label, "1st order", "order1");
+  const panelInner = sec.querySelector(".panelInner");
 
-  const sx = f.left + f.width/2 - wb.left;
-  const sy = f.bottom - wb.top + START_GAP;     // 下方向に少し出してから
-  const tx = t.left + t.width/2 - wb.left;
-  const ty = t.top - wb.top - END_GAP;          // ★ ボックス手前で止める
+  // 2nd のチップ + ネストアコーディオン（3rd）
+  (childrenOf[fid]||[]).forEach(sid=>{
+    const sub = makeSubSection(NODES[sid].label, "2nd", "order2");
+    const subInner = sub.panel;
 
-  // 中間の水平ライン（上下のちょうど真ん中）
-  const midY = (sy + (t.top - wb.top)) / 2;
-  const r = 12; // 角の丸み
+    const thirdKids = childrenOf[sid]||[];
+    if(thirdKids.length===0){
+      subInner.appendChild(el("div",{class:"empty",text:"（この項目に 3rd はありません）"}));
+    }else{
+      thirdKids.forEach(tid=>{
+        const chip = makeChip(NODES[tid].label, "order3", "3rd");
+        subInner.appendChild(chip);
+      });
+    }
 
-  const v1 = `M ${sx} ${sy} L ${sx} ${midY - r}`;
-  const c1 = `Q ${sx} ${midY} ${sx + (tx>sx? r:-r)} ${midY}`;
-  const h  = `L ${tx - (tx>sx? r:-r)} ${midY}`;
-  const c2 = `Q ${tx} ${midY} ${tx} ${midY + r}`;
-  const v2 = `L ${tx} ${ty}`;
-  return `${v1} ${c1} ${h} ${c2} ${v2}`;
-}
-
-let pathEls = [];
-function drawLinks(){
-  linksG.innerHTML = "";
-  pathEls = [];
-  edges.forEach(([a,b])=>{
-    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
-    p.setAttribute("class","link");
-    p.setAttribute("d", orthPath(document.getElementById(a), document.getElementById(b)));
-    linksG.appendChild(p);
-    pathEls.push(p);
+    panelInner.appendChild(sub.wrap);
   });
+
+  root.appendChild(sec);
+});
+
+/* ===================== コンポーネント ===================== */
+// 大セクション（1st）: 見出し + パネル
+function makeSection(title, badge, orderClass){
+  const wrap = el("div",{class:"section"});
+  const head = makeHead(title, badge);
+  const panel = el("div",{class:"panel"});
+  const inner = el("div",{class:"panelInner"});
+
+  panel.appendChild(inner);
+  wrap.appendChild(head);
+  wrap.appendChild(panel);
+
+  // 初期は閉じる
+  setupAccordion(head, panel);
+  return wrap;
 }
 
-function prep(p){
-  const len = p.getTotalLength();
-  p.style.strokeDasharray = len;
-  p.style.strokeDashoffset = len;
+// 2nd（ネスト）: 行ヘッダ + 3rdのチップ群
+function makeSubSection(title, badge, orderClass){
+  const wrap = el("div",{class:"section subblock"});
+  const head = makeHead(title, badge);
+  const panel = el("div",{class:"panel"});
+  const inner = el("div",{class:"panelInner"});
+  panel.appendChild(inner);
+
+  wrap.appendChild(head);
+  wrap.appendChild(panel);
+
+  setupAccordion(head, panel);
+  return {wrap, panel:inner};
 }
 
-// アニメ
-const nodeIds = [
-  "n1_prices","n1_export",
-  "n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy",
-  "n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"
-];
-
-function play(){
-  drawLinks();
-  const nodes = nodeIds.map(id=>document.getElementById(id));
-  gsap.set(nodes,{opacity:0,y:6});
-  pathEls.forEach(prep);
-
-  const tl = gsap.timeline({defaults:{ease:"power2.out"}});
-  // Lane1 → Lane2
-  tl.to("#n1_prices",{opacity:1,y:0,duration:.45})
-    .to(pathEls[0],{strokeDashoffset:0,duration:.7},"<+=0.05")
-    .to("#n21_steelPrice",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[1],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n22_steelGoods",{opacity:1,y:0,duration:.4},"<")
-
-    .to("#n1_export",{opacity:1,y:0,duration:.45},"+=0.1")
-    .to(pathEls[2],{strokeDashoffset:0,duration:.7},"<+=0.05")
-    .to("#n23_exportSqueeze",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[3],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n24_detour",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[4],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n25_policy",{opacity:1,y:0,duration:.4},"<");
-
-  // Lane2 → Lane3
-  tl.to(pathEls[5],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.1 → 3.1
-    .to("#n31_marketShare",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[6],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.1
-    .to(pathEls[7],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.2
-    .to("#n32_indirectExports",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[8],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.3 → 3.1
-    .to(pathEls[9],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.3 → 3.2
-    .to(pathEls[10],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.3
-    .to("#n33_indirectTrade",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[11],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.4
-    .to("#n34_reactionary",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[12],{strokeDashoffset:0,duration:.7},"-=0.1"); // 2.5 → 3.4
+// シンプルなチップ
+function makeChip(text, orderClass, tag){
+  const chip = el("div",{class:`chip ${orderClass}`});
+  chip.appendChild(el("span",{class:"tag",text:tag}));
+  chip.appendChild(document.createTextNode(" " + text));
+  return chip;
 }
 
-play();
-window.addEventListener("resize", drawLinks);
-document.getElementById("replay").addEventListener("click", play);
-window.addEventListener("keydown", e=>{ if(e.code==="Space") play(); });
+// 見出し（共通）
+function makeHead(title, badgeText){
+  const head = el("button",{class:"head", "aria-expanded":"false"});
+  head.appendChild(svgCaret());
+  head.appendChild(el("span",{class:"title",text:title}));
+  head.appendChild(el("span",{class:"badge",text:badgeText}));
+  return head;
+}
+
+// 開閉ロジック（高さアニメ）
+function setupAccordion(head, panel){
+  const caret = head.querySelector(".caret");
+  const inner = panel.querySelector(".panelInner");
+
+  head.addEventListener("click",()=>{
+    const isOpen = head.getAttribute("aria-expanded")==="true";
+    if(isOpen){
+      collapse(panel, caret, head);
+    }else{
+      expand(panel, caret, head);
+    }
+  });
+
+  // 初回は閉じた高さ0に
+  panel.style.height = "0px";
+}
+
+function expand(panel, caret, head){
+  head.setAttribute("aria-expanded","true");
+  caret.style.transform = "rotate(90deg)";
+  const target = panel.querySelector(".panelInner").scrollHeight;
+  panel.style.height = target + "px";
+}
+
+function collapse(panel, caret, head){
+  head.setAttribute("aria-expanded","false");
+  caret.style.transform = "rotate(0deg)";
+  panel.style.height = "0px";
+}
+
+// SVG caret
+function svgCaret(){
+  const span = document.createElement("span");
+  span.className = "caret";
+  span.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M9 6l8 6-8 6" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--ink').trim()||'#0e5567'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+  return span;
+}
+
+// element helper
+function el(tag, props){
+  const n = document.createElement(tag);
+  if(props){
+    Object.entries(props).forEach(([k,v])=>{
+      if(k==="text"){ n.textContent = v; }
+      else{ n.setAttribute(k,v); }
+    });
+  }
+  return n;
+}
+
+/* ===== 全開/全閉 ===== */
+document.getElementById("expandAll").addEventListener("click", ()=>{
+  document.querySelectorAll(".section > .head").forEach(h=>{
+    const panel = h.nextElementSibling;
+    const caret = h.querySelector(".caret");
+    if(h.getAttribute("aria-expanded")!=="true") expand(panel, caret, h);
+  });
+  document.querySelectorAll(".subblock > .head").forEach(h=>{
+    const panel = h.nextElementSibling;
+    const caret = h.querySelector(".caret");
+    if(h.getAttribute("aria-expanded")!=="true") expand(panel, caret, h);
+  });
+});
+
+document.getElementById("collapseAll").addEventListener("click", ()=>{
+  document.querySelectorAll(".section > .head, .subblock > .head").forEach(h=>{
+    const panel = h.nextElementSibling;
+    const caret = h.querySelector(".caret");
+    if(h.getAttribute("aria-expanded")==="true") collapse(panel, caret, h);
+  });
+});
+
+// ウィンドウサイズが変わったとき、開いているパネルの高さを再計算
+window.addEventListener("resize", ()=>{
+  document.querySelectorAll('.head[aria-expanded="true"]').forEach(h=>{
+    const panel = h.nextElementSibling;
+    const inner = panel.querySelector(".panelInner");
+    panel.style.height = inner.scrollHeight + "px";
+  });
+});
 </script>
 </body>
 </html>
