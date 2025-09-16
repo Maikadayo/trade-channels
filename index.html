@@ -1,211 +1,208 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sankey: 1st→2nd→3rd order (animated)</title>
-<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Swimlane Flow (1st → 2nd → 3rd)</title>
 <style>
-  html,body{height:100%;margin:0;background:#f6f9fc;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  #chart{width:100%;height:94vh}
-  .toolbar{display:flex;gap:8px;align-items:center;justify-content:center;padding:8px}
-  button{border:0;background:#0e5567;color:#fff;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.15)}
-  button.secondary{background:#6b8790}
+  :root{
+    --bg:#f6f9fc; --lane:#eaf2fb; --ink:#0e5567;
+    --box:#ffffff; --boxText:#082a34; --line:#b9cbe3;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1200px;margin:20px auto 90px;padding:0 14px;position:relative}
+  h1{font-size:18px;margin:0 0 8px}
+  /* Swimlanes */
+  .lanes{display:grid;grid-template-rows:auto auto auto;gap:18px;position:relative}
+  .lane{background:var(--lane);border:1px solid var(--line);border-radius:12px;padding:12px 12px 20px;position:relative}
+  .laneTitle{position:absolute;left:12px;top:-11px;background:var(--bg);padding:2px 8px;border:1px solid var(--line);border-radius:8px;font-weight:800}
+  .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-start}
+  .node{
+    min-width:210px; max-width:260px; padding:10px 12px; border-radius:10px;
+    background:var(--box); color:var(--boxText); border:1px solid #dfe7f4;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+    font-weight:800; white-space:nowrap; opacity:0; transform:translateY(6px);
+  }
+  /* SVG overlay for connectors */
+  .svgLayer{position:absolute; inset:0; pointer-events:none}
+  svg{width:100%;height:100%}
+  .link{stroke:var(--ink);stroke-width:6;fill:none;opacity:.92;marker-end:url(#arrow);
+        stroke-dasharray:1;stroke-dashoffset:1}
+  .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16)}
 </style>
 </head>
 <body>
-<div id="chart"></div>
-<div class="toolbar">
-  <button id="play">▶ 再生</button>
-  <button id="pause" class="secondary">⏸ 一時停止</button>
-  <button id="reset" class="secondary">⟲ 最初から</button>
+<div class="wrap" id="wrap">
+  <h1>Swimlane：1st → 2nd → 3rd order</h1>
+
+  <div class="lanes" id="lanes">
+    <!-- Lane 1 -->
+    <div class="lane" id="lane1">
+      <div class="laneTitle">1st order</div>
+      <div class="row">
+        <div class="node" id="n1_prices">1. ↓ PRICES</div>
+        <div class="node" id="n1_export">2. ↑ EXPORT</div>
+      </div>
+    </div>
+
+    <!-- Lane 2 -->
+    <div class="lane" id="lane2">
+      <div class="laneTitle">2nd order</div>
+      <div class="row">
+        <div class="node" id="n21_steelPrice">2.1 ↓ STEEL PRICES</div>
+        <div class="node" id="n22_steelGoods">2.2 ↑ STEEL-BASED GOODS</div>
+        <div class="node" id="n23_exportSqueeze">2.3 ↑ EXPORT SQUEEZE</div>
+        <div class="node" id="n24_detour">2.4 ↑ DETOUR TRADE</div>
+        <div class="node" id="n25_policy">2.5 ↑ POLICY PUSHBACK</div>
+      </div>
+    </div>
+
+    <!-- Lane 3 -->
+    <div class="lane" id="lane3">
+      <div class="laneTitle">3rd order</div>
+      <div class="row">
+        <div class="node" id="n31_marketShare">3.1 ↓ MARKET SHARE</div>
+        <div class="node" id="n32_indirectExports">3.2 ↑ INDIRECT EXPORTS</div>
+        <div class="node" id="n33_indirectTrade">3.3 ↑ INDIRECT TRADE</div>
+        <div class="node" id="n34_reactionary">3.4 ↑ REACTIONARY TRADE</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- connectors -->
+  <div class="svgLayer">
+    <svg id="svg">
+      <defs>
+        <marker id="arrow" markerWidth="12" markerHeight="12" refX="6" refY="6" orient="auto">
+          <path d="M0,0 L12,6 L0,12 Z" fill="#0e5567"/>
+        </marker>
+      </defs>
+      <g id="links"></g>
+    </svg>
+  </div>
+
+  <button class="replay" id="replay">▶ もう一度再生</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* ========= ノード（左→右：1st / 2nd / 3rd） ========= */
-const labels = [
-  // 1st (0..1)
-  "1. ↓ PRICES",
-  "2. ↑ EXPORT",
-  // 2nd (2..6)
-  "2.1 ↓ STEEL PRICES",
-  "2.2 ↑ STEEL-BASED GOODS",
-  "2.3 ↑ EXPORT SQUEEZE",
-  "2.4 ↑ DETOUR TRADE",
-  "2.5 ↑ POLICY PUSHBACK",
-  // 3rd (7..10)
-  "3.1 ↓ MARKET SHARE",
-  "3.2 ↑ INDIRECT EXPORTS",
-  "3.3 ↑ INDIRECT TRADE",
-  "3.4 ↑ REACTIONARY TRADE"
+/* ====== 配置のコツ ======
+   交差を減らすため、Lane2/3 の並びは以下で想定:
+   Lane2: 2.1 | 2.2 | 2.3 | 2.4 | 2.5
+   Lane3: 3.1 | 3.2 | 3.3 | 3.4
+   （必要なら順番入れ替えOK。矢印は自動配線）
+============================================ */
+
+const edges = [
+  // 1st → 2nd
+  ["n1_prices","n21_steelPrice"],
+  ["n1_prices","n22_steelGoods"],
+  ["n1_export","n23_exportSqueeze"],
+  ["n1_export","n24_detour"],
+  ["n1_export","n25_policy"],
+  // 2nd → 3rd
+  ["n21_steelPrice","n31_marketShare"],
+  ["n22_steelGoods","n31_marketShare"],
+  ["n22_steelGoods","n32_indirectExports"],
+  ["n23_exportSqueeze","n31_marketShare"],
+  ["n23_exportSqueeze","n32_indirectExports"],
+  ["n24_detour","n33_indirectTrade"],
+  ["n24_detour","n34_reactionary"],
+  ["n25_policy","n34_reactionary"]
 ];
 
-// ノードごとの水平位置（0〜1）
-const x = [
-  0.03, 0.03,   // 1st
-  0.35, 0.35, 0.35, 0.35, 0.35, // 2nd
-  0.73, 0.73, 0.73, 0.73  // 3rd
-];
-// ノードの縦位置（上から0〜1）
-const y = [
-  0.20, 0.65,
-  0.08, 0.25, 0.45, 0.65, 0.85,
-  0.15, 0.40, 0.62, 0.85
-];
+const wrap = document.getElementById("wrap");
+const linksG = document.getElementById("links");
 
-// カラー（レベル別）
-const nodeColors = [
-  "#2c7a7b","#2c7a7b",          // 1st: teal
-  "#3182ce","#3182ce","#3182ce","#3182ce","#3182ce", // 2nd: blue
-  "#805ad5","#805ad5","#805ad5","#805ad5"            // 3rd: purple
-];
+// 直交配線：下へ→水平→下（スイムレーンに合う形）
+function orthPath(fromEl, toEl){
+  const wb = wrap.getBoundingClientRect();
+  const f = fromEl.getBoundingClientRect();
+  const t = toEl.getBoundingClientRect();
 
-/* ========= リンク定義（ご指定の流れ） ========= */
-// s,t は labels 配列のインデックス
-const linksAll = {
-  source: [
-    // 1st→2nd
-    0,0,    // 1.PRICES → 2.1,2.2
-    1,1,1,  // 2.EXPORT → 2.3,2.4,2.5
-    // 2nd→3rd
-    2,      // 2.1 → 3.1
-    3,3,    // 2.2 → 3.1, 3.2
-    4,4,    // 2.3 → 3.1, 3.2
-    5,5,    // 2.4 → 3.3, 3.4
-    6       // 2.5 → 3.4
-  ],
-  target: [
-    2,3,
-    4,5,6,
-    7,
-    7,8,
-    7,8,
-    9,10,
-    10
-  ],
-  // すべて 1 としておき、アニメで 0→1 に増やす
-  value: new Array(15).fill(1),
-  color: new Array(15).fill("rgba(14,85,103,0.55)")
-};
+  const sx = f.left + f.width/2 - wb.left;
+  const sy = f.bottom - wb.top;
+  const tx = t.left + t.width/2 - wb.left;
+  const ty = t.top - wb.top;
 
-// アニメーションの“段階”ごとに値を 0→1 にするフレームを作る
-// ステップ: A)1st→2nd(Price) B)1st→2nd(Export) C)2.1/2.2→3.1/3.2 D)2.3→3.1/3.2 E)2.4→3.3/3.4 F)2.5→3.4
-const steps = [
-  [0,1],          // A
-  [2,3,4],        // B
-  [5,6,7],        // C
-  [8,9],          // D
-  [10,11],        // E
-  [12]            // F
-];
-
-// フレーム生成
-function makeFrames(){
-  const frames = [];
-  let revealed = new Array(linksAll.value.length).fill(0);
-  steps.forEach((ids, idx)=>{
-    ids.forEach(i=>revealed[i] = 1);
-    frames.push({
-      name: "step"+idx,
-      data: [{
-        type: "sankey",
-        node: { pad:20, thickness:18 },
-        link: {
-          source: linksAll.source,
-          target: linksAll.target,
-          value: revealed.slice(), // 現在までに“開通”したリンクは1、それ以外は0
-          color: linksAll.color
-        }
-      }],
-      // スムーズに流量が増えて見えるように遷移時間
-      traces: [0],
-      layout: {}
-    });
-  });
-  return frames;
+  const midY = (sy + ty) / 2; // 中間の水平ライン
+  // 僅かな丸み
+  const r = 14;
+  const v1 = `M ${sx} ${sy} L ${sx} ${midY-r}`;
+  const c1 = `Q ${sx} ${midY} ${sx+(tx>sx? r:-r)} ${midY}`;
+  const h  = `L ${tx-(tx>sx? r:-r)} ${midY}`;
+  const c2 = `Q ${tx} ${midY} ${tx} ${midY+r}`;
+  const v2 = `L ${tx} ${ty}`;
+  return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
 
-const data = [{
-  type: "sankey",
-  orientation: "h",
-  node: {
-    label: labels,
-    x: x, y: y,
-    pad: 20, thickness: 18,
-    color: nodeColors,
-    line: { color: "rgba(0,0,0,0.25)", width: 1 }
-  },
-  link: {
-    source: linksAll.source,
-    target: linksAll.target,
-    value: new Array(linksAll.value.length).fill(0), // 初期は0
-    color: linksAll.color
-  }
-}];
-
-const layout = {
-  margin: {l:10,r:10,t:24,b:10},
-  paper_bgcolor: "#f6f9fc",
-  plot_bgcolor: "#f6f9fc",
-  hovermode: "x",
-  font: {size: 13, color:"#0a2b33"},
-  // 注釈（レベル見出し）
-  annotations: [
-    {x:0.03,y:1.03, xref:"paper",yref:"paper", text:"1st order", showarrow:false, font:{size:14,weight:800}},
-    {x:0.50,y:1.03, xref:"paper",yref:"paper", text:"2nd order", showarrow:false, font:{size:14}},
-    {x:0.97,y:1.03, xref:"paper",yref:"paper", text:"3rd order", showarrow:false, font:{size:14}}
-  ],
-  updatemenus: [] // 自前のコントローラを使う
-};
-
-Plotly.newPlot("chart", data, layout, {displayModeBar:false}).then(g=>{
-  const frames = makeFrames();
-  Plotly.addFrames("chart", frames);
-
-  // コントロールボタン
-  let playing = false;
-  let frameIndex = -1;
-
-  function play(){
-    playing = true;
-    stepForward();
-  }
-  function pause(){
-    playing = false;
-  }
-  function reset(){
-    playing = false;
-    frameIndex = -1;
-    Plotly.animate("chart", [], {transition:{duration:0}, frame:{duration:0, redraw:true}});
-    Plotly.restyle("chart", {"link.value":[new Array(linksAll.value.length).fill(0)]});
-  }
-  function stepForward(){
-    if(!playing) return;
-    frameIndex++;
-    if(frameIndex >= frames.length){ playing = false; return; }
-    Plotly.animate("chart", ["step"+frameIndex], {
-      transition: {duration:450, easing:"cubic-in-out"},
-      frame: {duration:320, redraw:true}
-    }).then(()=>{ setTimeout(stepForward, 160); });
-  }
-
-  document.getElementById("play").onclick = ()=>{ if(!playing) play(); };
-  document.getElementById("pause").onclick = pause;
-  document.getElementById("reset").onclick = reset;
-
-  // クリックで“経路ハイライト”する（選択リンクだけ濃色に）
-  const baseColors = linksAll.color.slice();
-  document.getElementById("chart").on('plotly_click', ev=>{
-    const pts = ev.points?.[0];
-    if(!pts || pts.curveNumber !== 0 || pts.pointIndex == null) return;
-    const idx = pts.pointIndex;
-    const highlight = baseColors.map((c,i)=> i===idx ? "rgba(14,85,103,0.95)" : "rgba(14,85,103,0.25)");
-    Plotly.restyle("chart", {"link.color":[highlight]});
-    // 1秒後に戻す
-    setTimeout(()=> Plotly.restyle("chart", {"link.color":[baseColors]}), 1000);
+let pathEls = [];
+function drawLinks(){
+  linksG.innerHTML = "";
+  pathEls = [];
+  edges.forEach(([a,b])=>{
+    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("class","link");
+    p.setAttribute("d", orthPath(document.getElementById(a), document.getElementById(b)));
+    linksG.appendChild(p);
+    pathEls.push(p);
   });
+}
 
-});
+function prep(p){
+  const len = p.getTotalLength();
+  p.style.strokeDasharray = len;
+  p.style.strokeDashoffset = len;
+}
+
+// 再生
+const nodeIds = [
+  "n1_prices","n1_export",
+  "n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy",
+  "n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"
+];
+
+function play(){
+  drawLinks();
+  const nodes = nodeIds.map(id=>document.getElementById(id));
+  gsap.set(nodes,{opacity:0,y:6});
+  pathEls.forEach(prep);
+
+  const tl = gsap.timeline({defaults:{ease:"power2.out"}});
+  // Lane1 → Lane2
+  tl.to("#n1_prices",{opacity:1,y:0,duration:.45})
+    .to(pathEls[0],{strokeDashoffset:0,duration:.7},"<+=0.05")
+    .to("#n21_steelPrice",{opacity:1,y:0,duration:.4},"<")
+    .to(pathEls[1],{strokeDashoffset:0,duration:.7},"-=0.2")
+    .to("#n22_steelGoods",{opacity:1,y:0,duration:.4},"<")
+
+    .to("#n1_export",{opacity:1,y:0,duration:.45},"+=0.1")
+    .to(pathEls[2],{strokeDashoffset:0,duration:.7},"<+=0.05")
+    .to("#n23_exportSqueeze",{opacity:1,y:0,duration:.4},"<")
+    .to(pathEls[3],{strokeDashoffset:0,duration:.7},"-=0.2")
+    .to("#n24_detour",{opacity:1,y:0,duration:.4},"<")
+    .to(pathEls[4],{strokeDashoffset:0,duration:.7},"-=0.2")
+    .to("#n25_policy",{opacity:1,y:0,duration:.4},"<");
+
+  // Lane2 → Lane3
+  tl.to(pathEls[5],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.1 → 3.1
+    .to("#n31_marketShare",{opacity:1,y:0,duration:.45},"<")
+    .to(pathEls[6],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.1
+    .to(pathEls[7],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.2
+    .to("#n32_indirectExports",{opacity:1,y:0,duration:.45},"<")
+    .to(pathEls[8],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.3 → 3.1
+    .to(pathEls[9],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.3 → 3.2
+    .to(pathEls[10],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.3
+    .to("#n33_indirectTrade",{opacity:1,y:0,duration:.45},"<")
+    .to(pathEls[11],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.4
+    .to("#n34_reactionary",{opacity:1,y:0,duration:.45},"<")
+    .to(pathEls[12],{strokeDashoffset:0,duration:.7},"-=0.1"); // 2.5 → 3.4
+}
+
+play();
+window.addEventListener("resize", drawLinks);
+document.getElementById("replay").addEventListener("click", play);
+window.addEventListener("keydown", e=>{ if(e.code==="Space") play(); });
 </script>
 </body>
 </html>
