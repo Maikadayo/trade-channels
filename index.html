@@ -20,15 +20,16 @@
     margin:0;
     background:var(--bg);
     color:var(--ink);
-    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    overflow-x:hidden; /* 右に寄る原因の横スクロールを抑止 */
   }
 
-  /* 中央寄せを強化（幅を少し狭めて常に中央に） */
+  /* 常に中央のカラムに収める */
   .wrap{
     max-width:980px;
     margin:20px auto 120px;
     padding:0 18px;
-    position:relative
+    position:relative;
   }
 
   .banner{display:flex;justify-content:center;align-items:center;margin:8px 0 18px}
@@ -37,7 +38,12 @@
 
   .layers{display:grid;gap:46px;position:relative}
   .layer{position:relative;padding:10px 10px 0}
-  .row{display:flex;gap:18px;flex-wrap:nowrap;justify-content:center}
+  .row{
+    display:flex;
+    gap:18px;
+    flex-wrap:wrap;          /* 折り返して中央に寄せる */
+    justify-content:center;  /* 常に中央 */
+  }
 
   /* カード */
   .card{
@@ -46,9 +52,9 @@
     border:1px solid #2a3640; border-radius:16px;
     padding:16px 16px 14px; position:relative; box-shadow:0 14px 28px rgba(0,0,0,.35);
     display:grid; grid-template-columns:46px 1fr; gap:10px; align-items:center;
-    cursor:pointer; /* クリック可能 */
+    cursor:pointer;                    /* クリック可能 */
   }
-  .card.active{ outline:2px solid var(--wire); outline-offset:2px; } /* 選択中の見た目 */
+  .card.active{ outline:2px solid var(--wire); outline-offset:2px; }
 
   .card .cap{position:absolute;inset:8px 8px auto 8px;height:8px;border-radius:10px;background:var(--band,#444)}
   .title{font-weight:900}
@@ -62,12 +68,12 @@
   }
   .ico svg{width:26px;height:26px}
 
-  /* SVG 配線（カードより前面に） */
+  /* SVG 配線は前面に重ねる */
   .svgLayer{position:absolute;inset:0;pointer-events:none;z-index:5}
   svg{width:100%;height:100%}
   .wire{
     stroke:var(--wire);stroke-width:3.2;fill:none;marker-end:url(#arrow);
-    stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.55))
+    filter:drop-shadow(0 1px 0 rgba(0,0,0,.55));
   }
   .joint{fill:#d8dee6;stroke:#8a949d;stroke-width:1.2}
 
@@ -77,6 +83,7 @@
     font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35)
   }
 </style>
+
 
 </head>
 <body>
@@ -312,11 +319,10 @@ const EDGES = [
 const wrap   = document.getElementById("wrap");
 const wiresG = document.getElementById("wires");
 
-/* 既に描画済みのエッジを記録して重複を避ける（累積表示用） */
+/* 既に描画済みのエッジ（累積保持） */
 const drawnEdges = new Set();
 
-/* 下→横→下（カード手前で停止） */
-/* 下→横→下（終点はカード手前、縦区間は最小長さを保証） */
+/* パス生成：下→横→下（終点はカードの手前）。縦区間が潰れないよう保証 */
 function elbowPath(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f  = fromEl.getBoundingClientRect();
@@ -326,15 +332,13 @@ function elbowPath(fromEl, toEl){
   const sy = f.bottom - wb.top + 8;
   const tx = t.left + t.width/2 - wb.left;
 
-  const r = 10;
+  const r  = 10;
   const my = (sy + (t.top - wb.top)) / 2;
 
-  // 終点Yを計算（カード上辺の少し手前）＋最小の縦区間を保証
-  const CLEAR_DEFAULT = 8;               // カードに潜らない余白
-  const MIN_VERTICAL  = 8;               // 最後の縦区間の最小長さ
-  const maxTy = t.top - wb.top - 2;      // これ以上下げると被りやすい
-  let   ty    = t.top - wb.top - CLEAR_DEFAULT;
-  // ty は必ず (my + r + MIN_VERTICAL) 以上、かつ maxTy 以下に補正
+  const CLEAR = 10;                 // 先端がカードに潜らない余白
+  const MIN_VERTICAL = 8;           // 最後の縦区間の最小長
+  const maxTy = t.top - wb.top - 2; // 下がり過ぎ防止
+  let ty = t.top - wb.top - CLEAR;
   ty = Math.max(my + r + MIN_VERTICAL, Math.min(maxTy, ty));
 
   const v1 = `M ${sx} ${sy} L ${sx} ${my-r}`;
@@ -345,32 +349,28 @@ function elbowPath(fromEl, toEl){
   return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
 
-
-/* 単一エッジを（未描画なら）追加してアニメ表示 */
+/* 1本の矢印を（未描画なら）追加してアニメ表示 */
 function addEdgeAnimated(aId, bId){
   const key = `${aId}->${bId}`;
-  if (drawnEdges.has(key)) return;          // 既にあるならスキップ（残す）
+  if (drawnEdges.has(key)) return;          // 既に表示済みなら何もしない
   drawnEdges.add(key);
 
   const fromEl = document.getElementById(aId);
   const toEl   = document.getElementById(bId);
   if(!fromEl || !toEl) return;
 
-  // path
+  // path は先にDOMへ追加 → 長さを取得してアニメ
   const p = document.createElementNS("http://www.w3.org/2000/svg","path");
   p.setAttribute("class","wire");
   p.setAttribute("d", elbowPath(fromEl, toEl));
   wiresG.appendChild(p);
 
-  // 長さを取得して線をゼロから描く
   const L = p.getTotalLength ? p.getTotalLength() : 1;
   p.style.strokeDasharray  = L;
   p.style.strokeDashoffset = L;
-
-  // 矢印アニメ
   gsap.to(p, {strokeDashoffset:0, duration:1.0, ease:"power2.out"});
 
-  // 視認性アップのジョイント
+  // 視認性UPのジョイント
   const wb = wrap.getBoundingClientRect();
   const fa = fromEl.getBoundingClientRect();
   const ta = toEl.getBoundingClientRect();
@@ -385,7 +385,6 @@ function addEdgeAnimated(aId, bId){
 
 /* 指定カードから出る全エッジを追加（累積） */
 function addEdgesFrom(sourceId){
-  // アクティブ表示
   document.querySelectorAll(".card").forEach(el=>el.classList.remove("active"));
   const src = document.getElementById(sourceId);
   if (src) src.classList.add("active");
@@ -394,9 +393,19 @@ function addEdgesFrom(sourceId){
        .forEach(([a,b]) => addEdgeAnimated(a,b));
 }
 
-/* 初期化：全カードは常に表示、クリックで配線を追加していく */
+/* 再レイアウト時に、累積した線を引き直す */
+function redrawAll(){
+  const current = Array.from(drawnEdges);
+  wiresG.innerHTML = "";
+  drawnEdges.clear();
+  current.forEach(k=>{
+    const [a,b] = k.split("->");
+    addEdgeAnimated(a,b);
+  });
+}
+
+/* 初期化：カードは表示済み、クリックで追加していく */
 function init(){
-  // 全カードを表示済みに
   document.querySelectorAll(".card").forEach(el=>{
     gsap.set(el, {opacity:1, y:0});
     el.addEventListener("click", ()=> addEdgesFrom(el.id));
@@ -404,29 +413,24 @@ function init(){
 
   // 右下ボタン：全線クリア
   document.getElementById("replay").addEventListener("click", ()=>{
-    drawnEdges.clear();
     wiresG.innerHTML = "";
+    drawnEdges.clear();
     document.querySelectorAll(".card").forEach(el=>el.classList.remove("active"));
   });
 
-  // リサイズ時：いったん再描画（累積内容を復元）
-  window.addEventListener("resize", ()=>{
-    const edges = Array.from(drawnEdges);
-    wiresG.innerHTML = "";
-    drawnEdges.clear();
-    edges.forEach(k=>{
-      const [a,b] = k.split("->");
-      addEdgeAnimated(a,b);
-    });
-  });
+  // 画面サイズ変更やスクロールで再計算（右端に寄る時のズレ対策）
+  window.addEventListener("resize", redrawAll, {passive:true});
+  window.addEventListener("scroll", redrawAll, {passive:true});
 }
 
 init();
 </script>
 
 
+
 </body>
 </html>
+
 
 
 
