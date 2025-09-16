@@ -316,17 +316,27 @@ const wiresG = document.getElementById("wires");
 const drawnEdges = new Set();
 
 /* 下→横→下（カード手前で停止） */
+/* 下→横→下（終点はカード手前、縦区間は最小長さを保証） */
 function elbowPath(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f  = fromEl.getBoundingClientRect();
   const t  = toEl.getBoundingClientRect();
+
   const sx = f.left + f.width/2 - wb.left;
   const sy = f.bottom - wb.top + 8;
   const tx = t.left + t.width/2 - wb.left;
-  const CLEAR = 12;                     // 先端がカードに潜らない余白
-  const ty = t.top - wb.top - CLEAR;
 
-  const my = (sy + (t.top - wb.top)) / 2, r = 10;
+  const r = 10;
+  const my = (sy + (t.top - wb.top)) / 2;
+
+  // 終点Yを計算（カード上辺の少し手前）＋最小の縦区間を保証
+  const CLEAR_DEFAULT = 8;               // カードに潜らない余白
+  const MIN_VERTICAL  = 8;               // 最後の縦区間の最小長さ
+  const maxTy = t.top - wb.top - 2;      // これ以上下げると被りやすい
+  let   ty    = t.top - wb.top - CLEAR_DEFAULT;
+  // ty は必ず (my + r + MIN_VERTICAL) 以上、かつ maxTy 以下に補正
+  ty = Math.max(my + r + MIN_VERTICAL, Math.min(maxTy, ty));
+
   const v1 = `M ${sx} ${sy} L ${sx} ${my-r}`;
   const c1 = `Q ${sx} ${my} ${sx+(tx>sx? r:-r)} ${my}`;
   const h  = `L ${tx-(tx>sx? r:-r)} ${my}`;
@@ -334,6 +344,7 @@ function elbowPath(fromEl, toEl){
   const v2 = `L ${tx} ${ty}`;
   return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
+
 
 /* 単一エッジを（未描画なら）追加してアニメ表示 */
 function addEdgeAnimated(aId, bId){
@@ -416,6 +427,7 @@ init();
 
 </body>
 </html>
+
 
 
 
