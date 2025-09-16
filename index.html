@@ -3,11 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Top-Down Flow — fix rightmost links & down-triangles</title>
+<title>Top-Down Flow — fixed layout</title>
 <style>
   :root{
     --bg:#ffffff; --text:#102236;
-    /* 見やすい配色（1st/2nd/3rd） */
     --b1:#1f4dd9; --b2:#0fa3a9; --b3:#7a5af8;
 
     --wire:#15306b;         /* 標準リンク（濃紺） */
@@ -24,7 +23,7 @@
   .banner{display:flex;justify-content:center;align-items:center;margin:0 0 8px}
   .banner span{letter-spacing:.08em;font-weight:900}.banner .hi{color:var(--b1)}.banner .lo{color:#5d6f86}
 
-  .layers{display:grid;gap:34px;position:relative}
+  .layers{display:grid;gap:34px;position:relative;z-index:1} /* ← カードを前面へ */
   .layer{position:relative;padding:6px 6px 0}
   .row{display:flex;gap:16px;flex-wrap:nowrap;justify-content:center}
 
@@ -35,15 +34,15 @@
   .ico{width:42px;height:42px;border-radius:10px;background:#f8fbff;display:grid;place-items:center;border:1px solid var(--border)}
   .ico svg{width:24px;height:24px}
 
-  /* ▼ SVGレイヤをさらに広げる（端で途切れないように） */
-  .svgLayer{position:absolute;inset:-80px;pointer-events:none;z-index:0;overflow:visible}
-  svg{width:calc(100% + 160px);height:calc(100% + 160px)}
+  /* ▼ SVGレイヤを広げつつ背面に */
+  .svgLayer{position:absolute;inset:-120px;pointer-events:none;z-index:0;overflow:visible}
+  svg{width:calc(100% + 240px);height:calc(100% + 240px)}
   .wire{stroke:var(--wire);stroke-width:3;fill:none;marker-end:url(#arrowR);
-        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.15))}
-  .wire.emph{stroke:var(--wire-strong);stroke-width:4;filter:drop-shadow(0 2px 0 rgba(17,85,255,.25))}
+        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.10))}
+  .wire.emph{stroke:var(--wire-strong);stroke-width:4;marker-end:url(#arrowRemph);
+             filter:drop-shadow(0 2px 0 rgba(17,85,255,.20))}
   .joint{fill:#e2eaf5;stroke:#94a8bd;stroke-width:1.2}
-  /* 肘点の下向き三角 */
-  .downTri{fill:var(--wire);filter:drop-shadow(0 1px 0 rgba(0,0,0,.15))}
+  .downTri{fill:var(--wire)}
   .downTri.emph{fill:var(--wire-strong)}
 </style>
 </head>
@@ -107,9 +106,12 @@
   <div class="svgLayer">
     <svg id="svg">
       <defs>
-        <!-- 右向き矢印（終点用） -->
-        <marker id="arrowR" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-          <path d="M0,0 L8,4 L0,8" fill="var(--wire)"/>
+        <!-- 線色を継承する矢印（標準/強調） -->
+        <marker id="arrowR" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+          <path d="M0,0 L10,5 L0,10" fill="context-stroke"/>
+        </marker>
+        <marker id="arrowRemph" markerWidth="12" markerHeight="12" refX="9.5" refY="6" orient="auto">
+          <path d="M0,0 L12,6 L0,12" fill="context-stroke"/>
         </marker>
       </defs>
       <g id="wires"></g>
@@ -136,19 +138,53 @@ const EMPH_KEYS = new Set(["n1_export=>n25_policy","n25_policy=>n34_reactionary"
 const wrap = document.getElementById("wrap");
 const wiresG = document.getElementById("wires");
 
-/* 下→横→下。終点はカード直前まで（右端でも途切れない） */
-const START_GAP=8, END_GAP=2, R=10;
-function elbowGeom(fromEl, toEl){
+/* 行間の“水平レーン”を使って配線（カードは横切らない） */
+const START_GAP=12, END_GAP=10, R=12, LANE_MARGIN=12;
+
+/* 各レイヤーのレーンY（行間の中点 + マージン）を計算 */
+function laneYBetween(layerAId, layerBId){
   const wb = wrap.getBoundingClientRect();
-  const f = fromEl.getBoundingClientRect();
-  const t = toEl.getBoundingClientRect();
-  const sx = f.left + f.width/2 - wb.left;
-  const sy = f.bottom - wb.top + START_GAP;
-  const tx = t.left + t.width/2 - wb.left;
-  const ty = t.top - wb.top - END_GAP;
-  const my = (sy + (t.top - wb.top)) / 2;
-  const mx = (sx + tx) / 2; // 肘点X（真ん中）
-  const d = `M ${sx} ${sy} L ${sx} ${my-R} Q ${sx} ${my} ${sx+(tx>sx? R:-R)} ${my} L ${tx-(tx>sx? R:-R)} ${my} Q ${tx} ${my} ${tx} ${my+R} L ${tx} ${ty}`;
+  const a = document.getElementById(layerAId).getBoundingClientRect();
+  const b = document.getElementById(layerBId).getBoundingClientRect();
+  const mid = (a.bottom + b.top)/2 - wb.top;
+  return mid; // 行間のど真ん中（カードと重ならない）
+}
+
+function portBottomCenter(el){ const wb=wrap.getBoundingClientRect(); const r=el.getBoundingClientRect();
+  return {x:r.left + r.width/2 - wb.left, y:r.bottom - wb.top + START_GAP};
+}
+function portTopCenter(el){ const wb=wrap.getBoundingClientRect(); const r=el.getBoundingClientRect();
+  return {x:r.left + r.width/2 - wb.left, y:r.top - wb.top - END_GAP};
+}
+
+/* エルボー（start→lane→end） */
+function elbowGeom(fromEl, toEl){
+  const f = portBottomCenter(fromEl);
+  const t = portTopCenter(toEl);
+
+  // fromが属するレイヤとtoのレイヤからレーンYを決定
+  const layerFrom = fromEl.closest(".layer").id;
+  const layerTo   = toEl.closest(".layer").id;
+  const laneY = laneYBetween(layerFrom, layerTo) + (t.y > f.y ? 0 : 0);
+
+  const sx=f.x, sy=f.y, tx=t.x, ty=t.y;
+  const leftToRight = tx >= sx;
+  const r = R * (leftToRight ? 1 : -1);
+
+  // 水平はレーン上を通す
+  const d = [
+    `M ${sx} ${sy}`,
+    `L ${sx} ${laneY - Math.sign(laneY - sy) * R}`,
+    `Q ${sx} ${laneY} ${sx + r} ${laneY}`,
+    `L ${tx - r} ${laneY}`,
+    `Q ${tx} ${laneY} ${tx} ${laneY + R}`,
+    `L ${tx} ${ty}`
+  ].join(" ");
+
+  // 肘点（三角）の位置
+  const mx = (sx + tx) / 2;
+  const my = laneY;
+
   return {d, sx, sy, tx, ty, mx, my};
 }
 
@@ -159,7 +195,10 @@ function drawWires(){
   const emph   = EDGES.filter(([a,b])=> EMPH_KEYS.has(`${a}=>${b}`));
 
   function add([a,b], emphClass=false){
-    const {d, mx, my} = elbowGeom(document.getElementById(a), document.getElementById(b));
+    const fromEl = document.getElementById(a);
+    const toEl   = document.getElementById(b);
+    const {d, mx, my} = elbowGeom(fromEl, toEl);
+
     // 本線
     const p=document.createElementNS("http://www.w3.org/2000/svg","path");
     p.setAttribute("class","wire"+(emphClass?" emph":""));
@@ -167,32 +206,30 @@ function drawWires(){
     p.dataset.key=`${a}=>${b}`;
     wiresG.appendChild(p);
     pathEls.push(p);
-    // 肘点の下向き三角（▼）
+
+    // 肘点の下向き三角（▼）— レーン上、カードと被らない
     const tri=document.createElementNS("http://www.w3.org/2000/svg","path");
-    const w=12,h=8; // 横幅/高さ
+    const w=12,h=8;
     tri.setAttribute("d",`M ${mx-w/2} ${my} L ${mx+w/2} ${my} L ${mx} ${my+h} Z`);
     tri.setAttribute("class","downTri"+(emphClass?" emph":""));
     wiresG.appendChild(tri);
-    // 丸ジョイント2点（視認性）
-    const wb=wrap.getBoundingClientRect();
-    const fa=document.getElementById(a).getBoundingClientRect();
-    const ta=document.getElementById(b).getBoundingClientRect();
-    const cy=(fa.bottom-wb.top+ta.top-wb.top)/2;
-    [[fa.left+fa.width/2-wb.left, cy-12],[ta.left+ta.width/2-wb.left, cy+12]].forEach(([cx,cy2])=>{
-      const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
-      c.setAttribute("class","joint"); c.setAttribute("cx",cx); c.setAttribute("cy",cy2); c.setAttribute("r","4.2");
-      wiresG.appendChild(c);
-    });
+
+    // 丸ジョイント（視認性）
+    const c1=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c1.setAttribute("class","joint"); c1.setAttribute("cx",fromEl.getBoundingClientRect().left + fromEl.getBoundingClientRect().width/2 - wrap.getBoundingClientRect().left); c1.setAttribute("cy",my-10); c1.setAttribute("r","4.2");
+    const c2=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c2.setAttribute("class","joint"); c2.setAttribute("cx",toEl.getBoundingClientRect().left + toEl.getBoundingClientRect().width/2 - wrap.getBoundingClientRect().left); c2.setAttribute("cy",my+10); c2.setAttribute("r","4.2");
+    wiresG.appendChild(c1); wiresG.appendChild(c2);
   }
   normal.forEach(e=>add(e,false));
-  emph.forEach(e=>add(e,true)); // 強調線を最後に（最前面）
+  emph.forEach(e=>add(e,true)); // 強調線を最後に
 }
 
 function prep(p){const L=p.getTotalLength();p.style.strokeDasharray=L;p.style.strokeDashoffset=L;}
 
 function play(){
   drawWires();
-  // ふわっとゆっくり
+  // ふわっと
   const idsL0=["start"], idsL1=["n1_prices","n1_export"],
         idsL2=["n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy"],
         idsL3=["n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"];
@@ -210,19 +247,19 @@ function play(){
 
   show(L0,.5,.9);
   tl.to(wires.filter(w=>["start=>n1_prices","start=>n1_export"].includes(w.dataset.key)),
-        {strokeDashoffset:0,stagger:.6,duration:1.5}, "+=0.2");
+        {strokeDashoffset:0,stagger:.6,duration:1.2}, "+=0.2");
 
   show(L1,.5,.9);
   const w12=["n1_prices=>n21_steelPrice","n1_prices=>n22_steelGoods","n1_export=>n23_exportSqueeze","n1_export=>n24_detour","n1_export=>n25_policy"];
   tl.to(wires.filter(w=>w12.includes(w.dataset.key)),
-        {strokeDashoffset:0,stagger:.55,duration:1.6}, "+=0.25");
+        {strokeDashoffset:0,stagger:.45,duration:1.2}, "+=0.2");
 
   show(L2,.45,1.0);
   const w23=["n21_steelPrice=>n31_marketShare","n22_steelGoods=>n31_marketShare","n22_steelGoods=>n32_indirectExports",
              "n23_exportSqueeze=>n31_marketShare","n23_exportSqueeze=>n32_indirectExports",
              "n24_detour=>n33_indirectTrade","n24_detour=>n34_reactionary","n25_policy=>n34_reactionary"];
   tl.to(wires.filter(w=>w23.includes(w.dataset.key)),
-        {strokeDashoffset:0,stagger:.55,duration:1.6}, "+=0.25");
+        {strokeDashoffset:0,stagger:.45,duration:1.2}, "+=0.2");
 
   show(L3,.4,.9);
 }
@@ -233,3 +270,4 @@ document.getElementById("replay").addEventListener("click", play);
 </script>
 </body>
 </html>
+
