@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Top-Down Flow — fixed lanes under each layer</title>
+<title>Top-Down Flow — start at Excess Capacity</title>
 <style>
   :root{
     --bg:#ffffff; --text:#102236;
@@ -15,12 +15,11 @@
   html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
   .wrap{max-width:1050px;margin:70px auto 80px;padding:0 12px;position:relative}
 
+  /* 上中央ボタン */
   .replay{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:20;border:0;background:linear-gradient(180deg,#3060ff,#1f4dd9);color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;letter-spacing:.02em;box-shadow:0 10px 28px rgba(17,85,255,.28);cursor:pointer}
 
-  .banner{display:flex;justify-content:center;align-items:center;margin:0 0 8px}
-  .banner span{letter-spacing:.08em;font-weight:900}.banner .hi{color:var(--b1)}.banner .lo{color:#5d6f86}
-
-  .layers{display:grid;gap:34px;position:relative;z-index:1} /* カードを前面に */
+  /* レイアウト */
+  .layers{display:grid;gap:34px;position:relative;z-index:1} /* カードを前面 */
   .layer{position:relative;padding:6px 6px 0}
   .row{display:flex;gap:16px;flex-wrap:nowrap;justify-content:center}
 
@@ -38,7 +37,6 @@
         stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.08))}
   .wire.emph{stroke:var(--wire-strong);stroke-width:4;marker-end:url(#arrowRemph);
              filter:drop-shadow(0 2px 0 rgba(17,85,255,.18))}
-  .joint{fill:#e2eaf5;stroke:#94a8bd;stroke-width:1.2}
   .downTri{fill:var(--wire)}
   .downTri.emph{fill:var(--wire-strong)}
 </style>
@@ -47,10 +45,8 @@
 <button class="replay" id="replay">START AGAIN</button>
 
 <div class="wrap" id="wrap">
-
-
   <div class="layers" id="layers">
-    <!-- L0 -->
+    <!-- L0（最上段：ここから開始） -->
     <div class="layer" id="L0">
       <div class="row">
         <div class="card" id="start" style="--band:var(--b1)">
@@ -135,9 +131,8 @@ const EMPH_KEYS = new Set(["n1_export=>n25_policy","n25_policy=>n34_reactionary"
 const wrap = document.getElementById("wrap");
 const wiresG = document.getElementById("wires");
 
-/* 端子位置とレーン（“出発側のレイヤーの直下”に固定） */
+/* 端子とレーン（出発側レイヤー直下） */
 const START_GAP=12, END_GAP=10, R=12;
-
 const layers = Array.from(document.querySelectorAll('.layer'));
 
 function laneYBelowLayer(layerEl){
@@ -145,26 +140,19 @@ function laneYBelowLayer(layerEl){
   const idx = layers.indexOf(layerEl);
   const cur = layerEl.getBoundingClientRect();
   const next = layers[idx+1] ? layers[idx+1].getBoundingClientRect()
-                             : {top: cur.bottom + 80}; // 最終行の下に余白
-  return (cur.bottom + next.top)/2 - wb.top; // ← レイヤー直下のレーン
+                             : {top: cur.bottom + 80};
+  return (cur.bottom + next.top)/2 - wb.top; // レイヤー直下のレーン
 }
+function portBottomCenter(el){const wb=wrap.getBoundingClientRect(), r=el.getBoundingClientRect();
+  return {x:r.left + r.width/2 - wb.left, y:r.bottom - wb.top + START_GAP};}
+function portTopCenter(el){const wb=wrap.getBoundingClientRect(), r=el.getBoundingClientRect();
+  return {x:r.left + r.width/2 - wb.left, y:r.top - wb.top - END_GAP};}
 
-function portBottomCenter(el){
-  const wb=wrap.getBoundingClientRect(), r=el.getBoundingClientRect();
-  return {x:r.left + r.width/2 - wb.left, y:r.bottom - wb.top + START_GAP};
-}
-function portTopCenter(el){
-  const wb=wrap.getBoundingClientRect(), r=el.getBoundingClientRect();
-  return {x:r.left + r.width/2 - wb.left, y:r.top - wb.top - END_GAP};
-}
-
-/* エルボー（from のレーン→ to の上面） */
+/* エルボー（fromのレーン→toの上面） */
 function elbowGeom(fromEl, toEl){
   const f = portBottomCenter(fromEl);
   const t = portTopCenter(toEl);
-
-  const laneY = laneYBelowLayer(fromEl.closest(".layer")); // ★ 出発側の直下
-
+  const laneY = laneYBelowLayer(fromEl.closest(".layer"));
   const sx=f.x, sy=f.y, tx=t.x, ty=t.y;
   const leftToRight = tx >= sx;
   const r = R * (leftToRight ? 1 : -1);
@@ -180,7 +168,6 @@ function elbowGeom(fromEl, toEl){
 
   const mx = (sx + tx) / 2;
   const my = laneY;
-
   return {d, mx, my};
 }
 
@@ -202,7 +189,7 @@ function drawWires(){
     wiresG.appendChild(p);
     pathEls.push(p);
 
-    // 下向き三角（レーン上）
+    // レーン上の下向き三角
     const tri=document.createElementNS("http://www.w3.org/2000/svg","path");
     const w=12,h=8;
     tri.setAttribute("d",`M ${mx-w/2} ${my} L ${mx+w/2} ${my} L ${mx} ${my+h} Z`);
@@ -210,7 +197,7 @@ function drawWires(){
     wiresG.appendChild(tri);
   }
   normal.forEach(e=>add(e,false));
-  emph.forEach(e=>add(e,true)); // 強調線を最後に
+  emph.forEach(e=>add(e,true)); // 強調線は最前面
 }
 
 function prep(p){const L=p.getTotalLength();p.style.strokeDasharray=L;p.style.strokeDashoffset=L;}
@@ -258,4 +245,3 @@ document.getElementById("replay").addEventListener("click", play);
 </script>
 </body>
 </html>
-
