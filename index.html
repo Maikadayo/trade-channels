@@ -1,172 +1,230 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Swimlane Graph — 1st → 2nd → 3rd</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow Diagram – layered cards + connectors</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <style>
   :root{
-    --bg:#f6f9fc; --lane:#eaf2fb; --ink:#0e5567;
-    --box:#ffffff; --boxText:#0a2b33; --line:#b9cbe3;
+    --bg:#f5f8fb;
+    --ink:#2b3a43;
+    --accent1:#ff8a00;   /* オレンジ */
+    --accent2:#09b0c7;   /* シアン */
+    --accent3:#8f9aa7;   /* グレー */
+    --card:#ffffff;
+    --shadow:#cbd6e2;
+    --wire:#5b6b78;
   }
-  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1200px;margin:26px auto 110px;padding:0 14px;position:relative}
-  h1{font-size:18px;margin:0 0 10px}
+  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink)}
+  .wrap{max-width:1100px;margin:24px auto 100px;padding:0 16px;position:relative}
+  h1{font-size:18px;margin:0 0 12px}
 
-  /* Swimlanes（レーン間を広めに） */
-  .lanes{display:grid;grid-template-rows:auto auto auto;gap:46px;position:relative}
-  .lane{background:var(--lane);border:1px solid var(--line);border-radius:14px;padding:18px 14px 26px;position:relative}
-  .laneTitle{position:absolute;left:14px;top:-12px;background:var(--bg);padding:4px 10px;border:1px solid var(--line);border-radius:10px;font-weight:800}
-  .row{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-start}
-  /* 2nd order は横一列固定（必要なら横スクロール） */
-  .row.nowrap{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;scrollbar-color:#b9cbe3 transparent}
-  .row.nowrap::-webkit-scrollbar{height:8px}
-  .row.nowrap::-webkit-scrollbar-thumb{background:#b9cbe3;border-radius:8px}
-
-  .node{
-    min-width:210px; max-width:270px; padding:12px 14px; border-radius:12px;
-    background:var(--box); color:var(--boxText); border:1px solid #dfe7f4;
-    box-shadow:0 2px 8px rgba(0,0,0,.06);
-    font-weight:800; white-space:nowrap; opacity:0; transform:translateY(6px);
-    position:relative; z-index:2;  /* 矢印より前面 */
+  /* ====== レイアウト ====== */
+  .grid{
+    display:grid;
+    grid-template-columns: 360px 1fr; /* 左の円 + 右側の列 */
+    gap:24px;
+    align-items:start;
+  }
+  .right{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:28px 24px;
   }
 
-  /* SVG overlay for connectors */
-  .svgLayer{position:absolute; inset:0; pointer-events:none; z-index:1}
+  /* ====== 左の丸ノード ====== */
+  .circle{
+    position:sticky; top:16px;
+    width:320px; aspect-ratio:1/1; border-radius:50%;
+    background: radial-gradient(ellipse at 30% 30%, #ffffff 0%, #f1f5f9 70%);
+    box-shadow: 0 18px 28px rgba(0,0,0,.12), inset 0 0 0 12px #fff, inset 0 0 0 1px #e4edf5;
+    display:grid; place-items:center; text-align:center; font-weight:800;
+  }
+  .ring{position:absolute; inset:18px; border-radius:50%;
+        background:
+          conic-gradient(var(--accent1) 0 32%, transparent 0 50%, var(--accent2) 50% 82%, transparent 0);
+    box-shadow: inset 0 0 0 12px #fff;
+  }
+  .circle h2{margin:0 0 4px}
+  .dots{margin-top:8px; display:flex; gap:8px; justify-content:center}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .dot.o{background:var(--accent1)} .dot.c{background:var(--accent2)} .dot.g{background:var(--accent3)}
+
+  /* ====== 立体風カード ====== */
+  .card{
+    position:relative; padding:18px 18px 18px 20px; border-radius:18px;
+    background:var(--card);
+    box-shadow:
+      0 14px 24px rgba(0,0,0,.14),
+      inset 0 0 0 1px #dfe7f1;
+    isolation:isolate;
+  }
+  /* カラーフレーム（上側に太い帯） */
+  .card .frame{
+    position:absolute; inset:10px; border-radius:14px; pointer-events:none;
+    box-shadow: inset 0 0 0 10px var(--band, var(--accent3));
+  }
+  /* 影レイヤ（下に落ちる帯の影っぽさ） */
+  .card::after{
+    content:""; position:absolute; left:16px; right:16px; bottom:-10px; height:18px;
+    background: radial-gradient( ellipse at 50% 0%, rgba(0,0,0,.18), transparent 70%);
+    filter:blur(4px); z-index:-1; opacity:.65;
+  }
+  .title{font-weight:900; letter-spacing:.2px}
+  .num{font-size:28px; font-weight:900; color:var(--band); margin-top:6px}
+
+  /* 2列の上下交互配置を少しずらす（見た目を寄せる） */
+  .right > :nth-child(odd){margin-top:12px}
+
+  /* ====== 配線（SVG） ====== */
+  .svgLayer{position:absolute; inset:0; pointer-events:none; z-index:0}
   svg{width:100%;height:100%}
-  .link{
-    stroke:var(--ink); stroke-width:5.5; fill:none; opacity:.95; marker-end:url(#arrow);
-    stroke-dasharray:1; stroke-dashoffset:1; transition:opacity .15s ease;
-  }
-  .link.dim{opacity:.25}
+  .node{fill:#fff; stroke:#c9d6e3; stroke-width:2}
+  .wire{stroke:var(--wire); stroke-width:2; fill:none; marker-end:url(#arrow);
+        stroke-dasharray:1; stroke-dashoffset:1}
 
-  .legend{display:flex;gap:8px;align-items:center;margin:6px 0 10px}
-  .pill{font-size:12px;border:1px solid var(--line);background:#fff;padding:4px 8px;border-radius:999px;color:#55737e;font-weight:700}
-
-  .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16)}
+  .replay{position:fixed; left:50%; bottom:16px; transform:translateX(-50%);
+    border:0;background:var(--wire);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;
+    box-shadow:0 8px 22px rgba(0,0,0,.16)}
 </style>
 </head>
 <body>
 <div class="wrap" id="wrap">
-  <h1>Swimlane：1st → 2nd → 3rd order</h1>
-  <div class="legend">
-    <span class="pill">直交配線（下 → 横 → 下）で交差を最小化</span>
-    <span class="pill">矢印ヘッドは小型化＆ボックス手前で停止</span>
-    <span class="pill">2nd は横一列（横スクロール可）</span>
+  <h1>Flow Diagram（インフォグラフィック風）</h1>
+
+  <div class="grid" id="grid">
+    <!-- 左の丸 -->
+    <div class="circle" id="circle">
+      <div class="ring"></div>
+      <div style="position:relative; z-index:1;">
+        <h2>INFOGRAPHIC<br>ELEMENTS</h2>
+        <div class="dots"><span class="dot o"></span><span class="dot c"></span><span class="dot g"></span></div>
+      </div>
+    </div>
+
+    <!-- 右側のカード群 -->
+    <div class="right" id="cards">
+      <!-- 1 -->
+      <div class="card" data-band="var(--accent1)" id="c1">
+        <div class="frame" style="--band:var(--accent1)"></div>
+        <div class="title">IDEA</div>
+        <div class="num">01</div>
+        <div class="text">Describe the initial concept or insight that kicks off the process.</div>
+      </div>
+      <!-- 2 -->
+      <div class="card" data-band="var(--accent1)" id="c2">
+        <div class="frame" style="--band:var(--accent1)"></div>
+        <div class="title">LOREM IPSUM</div>
+        <div class="num">—</div>
+        <div class="text">Short supportive description goes here.</div>
+      </div>
+      <!-- 3 -->
+      <div class="card" data-band="var(--accent2)" id="c3">
+        <div class="frame" style="--band:var(--accent2)"></div>
+        <div class="title">BRAINSTORM</div>
+        <div class="num">02</div>
+        <div class="text">Collect ideas and quickly evaluate options.</div>
+      </div>
+      <!-- 4 -->
+      <div class="card" data-band="var(--accent2)" id="c4">
+        <div class="frame" style="--band:var(--accent2)"></div>
+        <div class="title">DOLOR SIT AMET</div>
+        <div class="num">—</div>
+        <div class="text">Auxiliary notes or references.</div>
+      </div>
+      <!-- 5 -->
+      <div class="card" data-band="var(--accent3)" id="c5">
+        <div class="frame" style="--band:var(--accent3)"></div>
+        <div class="title">DEADLINE</div>
+        <div class="num">03</div>
+        <div class="text">Define milestones and due dates.</div>
+      </div>
+      <!-- 6 -->
+      <div class="card" data-band="var(--accent3)" id="c6">
+        <div class="frame" style="--band:var(--accent3)"></div>
+        <div class="title">GOAL</div>
+        <div class="num">04</div>
+        <div class="text">Clarify the outcome and success criteria.</div>
+      </div>
+    </div>
   </div>
 
-  <div class="lanes" id="lanes">
-    <!-- Lane 1 -->
-    <div class="lane" id="lane1">
-      <div class="laneTitle">1st order</div>
-      <div class="row">
-        <div class="node" id="n1_prices">1. ↓ PRICES</div>
-        <div class="node" id="n1_export">2. ↑ EXPORT</div>
-      </div>
-    </div>
-
-    <!-- Lane 2 -->
-    <div class="lane" id="lane2">
-      <div class="laneTitle">2nd order</div>
-      <div class="row nowrap">
-        <div class="node" id="n21_steelPrice">2.1 ↓ STEEL PRICES</div>
-        <div class="node" id="n22_steelGoods">2.2 ↑ STEEL-BASED GOODS</div>
-        <div class="node" id="n23_exportSqueeze">2.3 ↑ EXPORT SQUEEZE</div>
-        <div class="node" id="n24_detour">2.4 ↑ DETOUR TRADE</div>
-        <div class="node" id="n25_policy">2.5 ↑ POLICY PUSHBACK</div>
-      </div>
-    </div>
-
-    <!-- Lane 3 -->
-    <div class="lane" id="lane3">
-      <div class="laneTitle">3rd order</div>
-      <div class="row">
-        <div class="node" id="n31_marketShare">3.1 ↓ MARKET SHARE</div>
-        <div class="node" id="n32_indirectExports">3.2 ↑ INDIRECT EXPORTS</div>
-        <div class="node" id="n33_indirectTrade">3.3 ↑ INDIRECT TRADE</div>
-        <div class="node" id="n34_reactionary">3.4 ↑ REACTIONARY TRADE</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- connectors -->
+  <!-- SVG: 配線とジョイント -->
   <div class="svgLayer">
     <svg id="svg">
       <defs>
-        <!-- 小さめの矢印ヘッド（7px） -->
-        <marker id="arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#0e5567"/>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8" fill="var(--wire)"/>
         </marker>
       </defs>
-      <g id="links"></g>
+      <g id="wires"></g>
     </svg>
   </div>
 
   <button class="replay" id="replay">▶ もう一度再生</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* ===== 接続定義（最新版のフロー） ===== */
-const edges = [
-  // 1st → 2nd
-  ["n1_prices","n21_steelPrice"],
-  ["n1_prices","n22_steelGoods"],
-  ["n1_export","n23_exportSqueeze"],
-  ["n1_export","n24_detour"],
-  ["n1_export","n25_policy"],
-  // 2nd → 3rd
-  ["n21_steelPrice","n31_marketShare"],
-  ["n22_steelGoods","n31_marketShare"],
-  ["n22_steelGoods","n32_indirectExports"],
-  ["n23_exportSqueeze","n31_marketShare"],
-  ["n23_exportSqueeze","n32_indirectExports"],
-  ["n24_detour","n33_indirectTrade"],
-  ["n24_detour","n34_reactionary"],
-  ["n25_policy","n34_reactionary"]
+/* 配線ルール：左の円 → 各カード（直交配線＋小さな丸ジョイント） */
+const pairs = [
+  "c1","c2","c3","c4","c5","c6" // 円からこの順に配線
 ];
 
 const wrap = document.getElementById("wrap");
-const linksG = document.getElementById("links");
+const svgG  = document.getElementById("wires");
 
-/* 直交配線：下→横→下
-   テキストにかからないよう、始点/終点をボックスから離す */
-const START_GAP = 8;   // 始点（ボックス下から少し下）
-const END_GAP   = 12;  // 終点（ターゲット上から少し上）▶ が文字にかからない
+function drawAll(){
+  svgG.innerHTML = "";
+  const circle = document.getElementById("circle").getBoundingClientRect();
+  const wrapB  = wrap.getBoundingClientRect();
 
-function orthPath(fromEl, toEl){
-  const wb = wrap.getBoundingClientRect();
-  const f = fromEl.getBoundingClientRect();
-  const t = toEl.getBoundingClientRect();
+  pairs.forEach((id, idx)=>{
+    const el = document.getElementById(id);
+    const r = el.getBoundingClientRect();
 
-  const sx = f.left + f.width/2 - wb.left;
-  const sy = f.bottom - wb.top + START_GAP;
-  const tx = t.left + t.width/2 - wb.left;
-  const ty = t.top - wb.top - END_GAP;
+    // 円の右側の適当な高さから出発（上段/下段で高さをずらす）
+    const sx = circle.right - wrapB.left - 6;
+    const sy = circle.top   - wrapB.top + circle.height*(0.25 + 0.12*idx);
 
-  // レーンの中間高さに水平ラインを置く（交差減らす）
-  const midY = (sy + (t.top - wb.top)) / 2;
+    // カードの左中央に入るが、わずかに手前で停止
+    const tx = r.left - wrapB.left - 14;
+    const ty = r.top  - wrapB.top + r.height/2;
 
-  // 角を少し丸める
-  const r = 12;
-  const v1 = `M ${sx} ${sy} L ${sx} ${midY - r}`;
-  const c1 = `Q ${sx} ${midY} ${sx + (tx>sx? r:-r)} ${midY}`;
-  const h  = `L ${tx - (tx>sx? r:-r)} ${midY}`;
-  const c2 = `Q ${tx} ${midY} ${tx} ${midY + r}`;
-  const v2 = `L ${tx} ${ty}`;
-  return `${v1} ${c1} ${h} ${c2} ${v2}`;
-}
+    // 途中ジョイント点（円を出たあと水平→小丸→水平→小丸→カードへ）
+    const j1x = sx + 48;
+    const j2x = (j1x + tx)/2;
 
-let pathEls = [];
-function drawLinks(){
-  linksG.innerHTML = "";
-  pathEls = [];
-  edges.forEach(([a,b])=>{
+    // 丸ノード
+    [ [j1x,sy], [j2x,sy] ].forEach(([cx,cy])=>{
+      const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute("class","node");
+      c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", 8);
+      svgG.appendChild(c);
+      const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      dot.setAttribute("cx", cx); dot.setAttribute("cy", cy); dot.setAttribute("r", 2.2);
+      dot.setAttribute("fill", "#6b7c8a");
+      svgG.appendChild(dot);
+    });
+
+    // パス（直線＋角の丸み）
+    const rCorner = 10;
+    function segPath(x1,y1,x2,y2){ return `M ${x1} ${y1} L ${x2} ${y2}`; }
+    function elbow(x,y,dir){ // dir: +1 (右) or -1 (左)
+      return `M ${x} ${y-rCorner} Q ${x} ${y} ${x+(rCorner*dir)} ${y}`;
+    }
+
     const p = document.createElementNS("http://www.w3.org/2000/svg","path");
-    p.setAttribute("class","link");
-    p.setAttribute("d", orthPath(document.getElementById(a), document.getElementById(b)));
-    linksG.appendChild(p);
-    pathEls.push(p);
+    let d = "";
+    d += segPath(sx,sy, j1x-8, sy);               // 円→j1手前
+    d += " " + elbow(j1x-8, sy, +1);              // 曲げ
+    d += segPath(j1x+8, sy, j2x-8, sy);           // j1→j2手前
+    d += " " + elbow(j2x-8, sy, +1);              // 曲げ
+    d += segPath(j2x+8, sy, tx, ty);              // 斜めでカード手前へ
+    p.setAttribute("d", d);
+    p.setAttribute("class","wire");
+    svgG.appendChild(p);
   });
 }
 
@@ -176,77 +234,26 @@ function prep(p){
   p.style.strokeDashoffset = len;
 }
 
-/* アニメとハイライト */
-const nodeIds = [
-  "n1_prices","n1_export",
-  "n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy",
-  "n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"
-];
+function animateIn(){
+  // カードをフェードイン
+  const cards = Array.from(document.querySelectorAll(".card"));
+  gsap.set(cards,{opacity:0,y:8});
+  gsap.to(cards,{opacity:1,y:0,stagger:0.08,duration:.45,ease:"power2.out"});
 
-function play(){
-  drawLinks();
-  const nodes = nodeIds.map(id=>document.getElementById(id));
-  gsap.set(nodes,{opacity:0,y:6});
-  pathEls.forEach(prep);
-
-  const tl = gsap.timeline({defaults:{ease:"power2.out"}});
-  // 1 → 2
-  tl.to("#n1_prices",{opacity:1,y:0,duration:.45})
-    .to(pathEls[0],{strokeDashoffset:0,duration:.7},"<+=0.05")
-    .to("#n21_steelPrice",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[1],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n22_steelGoods",{opacity:1,y:0,duration:.4},"<")
-
-    .to("#n1_export",{opacity:1,y:0,duration:.45},"+=0.1")
-    .to(pathEls[2],{strokeDashoffset:0,duration:.7},"<+=0.05")
-    .to("#n23_exportSqueeze",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[3],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n24_detour",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[4],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n25_policy",{opacity:1,y:0,duration:.4},"<");
-
-  // 2 → 3
-  tl.to(pathEls[5],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.1 → 3.1
-    .to("#n31_marketShare",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[6],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.1
-    .to(pathEls[7],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.2
-    .to("#n32_indirectExports",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[8],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.3 → 3.1
-    .to(pathEls[9],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.3 → 3.2
-    .to(pathEls[10],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.3
-    .to("#n33_indirectTrade",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[11],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.4
-    .to("#n34_reactionary",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[12],{strokeDashoffset:0,duration:.7},"-=0.1"); // 2.5 → 3.4
+  // 配線アニメ
+  const wires = Array.from(document.querySelectorAll(".wire"));
+  wires.forEach(prep);
+  gsap.to(wires,{strokeDashoffset:0,stagger:0.06,duration:.9,ease:"power2.out",delay:.05});
 }
 
-/* ノードをクリックすると関連リンクだけ濃く表示（読みやすさ向上） */
-function setupInteraction(){
-  const mapOut = {};
-  edges.forEach(([a,b],i)=>{
-    if(!mapOut[a]) mapOut[a]=[];
-    if(!mapOut[b]) mapOut[b]=[];
-    mapOut[a].push(i);
-    mapOut[b].push(i);
-  });
-  nodeIds.forEach(id=>{
-    const el = document.getElementById(id);
-    el.style.cursor = "pointer";
-    el.addEventListener("mouseenter", ()=>{
-      const idxs = mapOut[id]||[];
-      pathEls.forEach((p,i)=> p.classList.toggle("dim", !idxs.includes(i)));
-    });
-    el.addEventListener("mouseleave", ()=>{
-      pathEls.forEach(p=> p.classList.remove("dim"));
-    });
-  });
+function play(){
+  drawAll();
+  animateIn();
 }
 
 play();
-setupInteraction();
-window.addEventListener("resize", drawLinks);
+window.addEventListener("resize", drawAll);
 document.getElementById("replay").addEventListener("click", play);
-window.addEventListener("keydown", e=>{ if(e.code==="Space") play(); });
 </script>
 </body>
 </html>
