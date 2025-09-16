@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Horizontal Swimlane (→) — 1st → 2nd → 3rd</title>
+<title>No-cross Swimlane (auto-ordering)</title>
 <style>
   :root{
     --bg:#f6f9fc; --lane:#eaf2fb; --ink:#0e5567;
@@ -13,7 +13,7 @@
   .wrap{max-width:1200px;margin:26px auto 110px;padding:0 14px;position:relative}
   h1{font-size:18px;margin:0 0 10px}
 
-  /* 横向きスイムレーン：列ごとに order を配置 */
+  /* Swimlanes（横方向に流れる列） */
   .lanes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:46px;position:relative}
   .lane{background:var(--lane);border:1px solid var(--line);border-radius:14px;padding:22px 16px 22px;position:relative;min-height:520px}
   .laneTitle{position:absolute;left:16px;top:-12px;background:var(--bg);padding:4px 10px;border:1px solid var(--line);border-radius:10px;font-weight:800}
@@ -27,36 +27,34 @@
     position:relative; z-index:2; /* 矢印より前面 */
   }
 
-  /* 配線（SVGオーバーレイ） */
+  /* SVGオーバーレイ（コネクタ） */
   .svgLayer{position:absolute; inset:0; pointer-events:none; z-index:1}
   svg{width:100%;height:100%}
   .link{
-    stroke:var(--ink); stroke-width:5.5; fill:none; opacity:.95; marker-end:url(#arrow);
+    stroke:var(--ink); stroke-width:5.2; fill:none; opacity:.95; marker-end:url(#arrow);
     stroke-dasharray:1; stroke-dashoffset:1;
   }
-  .link.dim{opacity:.25}
-
   .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16)}
 </style>
 </head>
 <body>
 <div class="wrap" id="wrap">
-  <h1>Horizontal Swimlane（→で流れる）</h1>
+  <h1>No-cross Swimlane（自動並び替えで矢印が交差しない）</h1>
 
   <div class="lanes" id="lanes">
     <!-- 1st -->
     <div class="lane">
       <div class="laneTitle">1st order</div>
-      <div class="col">
+      <div class="col" id="col1">
         <div class="node" id="n1_prices">1. ↓ PRICES</div>
         <div class="node" id="n1_export">2. ↑ EXPORT</div>
       </div>
     </div>
 
-    <!-- 2nd（縦積み） -->
+    <!-- 2nd -->
     <div class="lane">
       <div class="laneTitle">2nd order</div>
-      <div class="col">
+      <div class="col" id="col2">
         <div class="node" id="n21_steelPrice">2.1 ↓ STEEL PRICES</div>
         <div class="node" id="n22_steelGoods">2.2 ↑ STEEL-BASED GOODS</div>
         <div class="node" id="n23_exportSqueeze">2.3 ↑ EXPORT SQUEEZE</div>
@@ -68,7 +66,7 @@
     <!-- 3rd -->
     <div class="lane">
       <div class="laneTitle">3rd order</div>
-      <div class="col">
+      <div class="col" id="col3">
         <div class="node" id="n31_marketShare">3.1 ↓ MARKET SHARE</div>
         <div class="node" id="n32_indirectExports">3.2 ↑ INDIRECT EXPORTS</div>
         <div class="node" id="n33_indirectTrade">3.3 ↑ INDIRECT TRADE</div>
@@ -81,9 +79,9 @@
   <div class="svgLayer">
     <svg id="svg">
       <defs>
-        <!-- 小さめの矢印ヘッド（7px） -->
-        <marker id="arrow" markerWidth="7" markerHeight="7" refX="7" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#0e5567"/>
+        <!-- 小さめの矢印ヘッド（6px） -->
+        <marker id="arrow" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#0e5567"/>
         </marker>
       </defs>
       <g id="links"></g>
@@ -95,8 +93,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* ===== 接続定義（Swimlaneで使った最新ルール） ===== */
-const edges = [
+/* ===== 元の接続ルール ===== */
+const EDGES = [
   // 1st → 2nd
   ["n1_prices","n21_steelPrice"],
   ["n1_prices","n22_steelGoods"],
@@ -114,16 +112,39 @@ const edges = [
   ["n25_policy","n34_reactionary"]
 ];
 
+/* ===== 交差ゼロのための並び替え（barycenter） ===== */
+function reorderColumn(prevColId, thisColId, edges){
+  const prevNodes = Array.from(document.querySelectorAll(`#${prevColId} .node`)).map(n=>n.id);
+  const thisNodes = Array.from(document.querySelectorAll(`#${thisColId} .node`));
+  const parentIdx = Object.fromEntries(prevNodes.map((id,i)=>[id,i]));
+
+  // 各 thisNode の「親の平均位置」
+  const scores = thisNodes.map(n=>{
+    const parents = edges.filter(([a,b])=> b===n.id).map(([a])=> parentIdx[a]).filter(i=>i!=null);
+    const s = parents.length ? (parents.reduce((p,c)=>p+c,0)/parents.length) : 1e9;
+    return {el:n, score:s};
+  });
+
+  // スコア順に DOM を並べ替え
+  scores.sort((a,b)=>a.score-b.score).forEach(({el})=>{
+    el.parentElement.appendChild(el); // 末尾に再挿入＝並び替え
+  });
+}
+
+// 1→2、2→3 の順に適用
+function autoOrder(){
+  reorderColumn("col1","col2", EDGES);
+  // 2→3 用に 2nd→3rd のエッジだけを渡す
+  const e23 = EDGES.filter(([a,b])=> a.startsWith("n2") && b.startsWith("n3"));
+  reorderColumn("col2","col3", e23);
+}
+
+/* ===== 配線（直交：右→縦→右）。ボックス手前で停止 ===== */
 const wrap = document.getElementById("wrap");
 const linksG = document.getElementById("links");
+const START_GAP = 10, END_GAP = 10, R = 12;
 
-/* 直交配線：右→（縦）→右
-   テキストにかからないよう、始点/終点をボックスから少し離す */
-const START_GAP = 10;  // 始点：右端から少し外へ
-const END_GAP   = 12;  // 終点：ターゲット左手前で止める（矢印ヘッドが文字にかからない）
-const RADIUS    = 12;  // 角の丸み
-
-function orthPath(fromEl, toEl){
+function pathBetween(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f = fromEl.getBoundingClientRect();
   const t = toEl.getBoundingClientRect();
@@ -133,38 +154,31 @@ function orthPath(fromEl, toEl){
   const tx = t.left - wb.left - END_GAP;
   const ty = t.top + t.height/2 - wb.top;
 
-  // 中間の縦ライン（左右のちょうど真ん中）
-  const midX = (sx + (t.left - wb.left)) / 2;
+  // 垂直の中間線（左右の中点）
+  const mx = (sx + (t.left - wb.left)) / 2;
 
-  // パス（右へ→曲げ→上下→曲げ→右へ）
-  const h1 = `M ${sx} ${sy} L ${midX - RADIUS} ${sy}`;
-  const c1 = `Q ${midX} ${sy} ${midX} ${sy + (ty>sy? RADIUS:-RADIUS)}`;
-  const v  = `L ${midX} ${ty - (ty>sy? RADIUS:-RADIUS)}`;
-  const c2 = `Q ${midX} ${ty} ${midX + RADIUS} ${ty}`;
+  const h1 = `M ${sx} ${sy} L ${mx - R} ${sy}`;
+  const c1 = `Q ${mx} ${sy} ${mx} ${sy + (ty>sy? R:-R)}`;
+  const v  = `L ${mx} ${ty - (ty>sy? R:-R)}`;
+  const c2 = `Q ${mx} ${ty} ${mx + R} ${ty}`;
   const h2 = `L ${tx} ${ty}`;
   return `${h1} ${c1} ${v} ${c2} ${h2}`;
 }
 
 let pathEls = [];
 function drawLinks(){
-  linksG.innerHTML = "";
-  pathEls = [];
-  edges.forEach(([a,b])=>{
+  linksG.innerHTML = ""; pathEls = [];
+  EDGES.forEach(([a,b])=>{
     const p = document.createElementNS("http://www.w3.org/2000/svg","path");
     p.setAttribute("class","link");
-    p.setAttribute("d", orthPath(document.getElementById(a), document.getElementById(b)));
-    linksG.appendChild(p);
-    pathEls.push(p);
+    p.setAttribute("d", pathBetween(document.getElementById(a), document.getElementById(b)));
+    linksG.appendChild(p); pathEls.push(p);
   });
 }
 
-function prep(p){
-  const len = p.getTotalLength();
-  p.style.strokeDasharray = len;
-  p.style.strokeDashoffset = len;
-}
+/* ===== アニメ ===== */
+function prep(p){ const L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; }
 
-/* アニメ & ハイライト */
 const nodeIds = [
   "n1_prices","n1_export",
   "n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy",
@@ -172,7 +186,8 @@ const nodeIds = [
 ];
 
 function play(){
-  drawLinks();
+  autoOrder();           // ← まず並び替え
+  drawLinks();           // ← その後に配線
   const nodes = nodeIds.map(id=>document.getElementById(id));
   gsap.set(nodes,{opacity:0,y:6});
   pathEls.forEach(prep);
@@ -208,29 +223,8 @@ function play(){
     .to(pathEls[12],{strokeDashoffset:0,duration:.7},"-=0.1"); // 2.5 → 3.4
 }
 
-/* ノードにホバーで関連リンクだけ濃色表示 */
-function setupInteraction(){
-  const map = {};
-  edges.forEach(([a,b],i)=>{
-    (map[a] ??= []).push(i);
-    (map[b] ??= []).push(i);
-  });
-  nodeIds.forEach(id=>{
-    const el = document.getElementById(id);
-    el.style.cursor = "pointer";
-    el.addEventListener("mouseenter", ()=>{
-      const on = new Set(map[id]||[]);
-      pathEls.forEach((p,i)=> p.classList.toggle("dim", !on.has(i)));
-    });
-    el.addEventListener("mouseleave", ()=>{
-      pathEls.forEach(p=> p.classList.remove("dim"));
-    });
-  });
-}
-
 play();
-setupInteraction();
-window.addEventListener("resize", drawLinks);
+window.addEventListener("resize", ()=>{ play(); });  // サイズ変更時も並び替え＆再配線
 document.getElementById("replay").addEventListener("click", play);
 window.addEventListener("keydown", e=>{ if(e.code==="Space") play(); });
 </script>
