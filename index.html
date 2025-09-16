@@ -59,7 +59,7 @@
 <div class="wrap" id="wrap">
 
   <div class="banner">
-
+    <span class="lo">BEFORE</span>&nbsp;<span class="hi">YOU</span>&nbsp;<span class="lo">ASSESS</span>
   </div>
 
   <div class="layers" id="layers">
@@ -313,8 +313,7 @@ function elbowPath(fromEl, toEl){
   const sx = f.left + f.width/2 - wb.left;
   const sy = f.bottom - wb.top + 8;
   const tx = t.left + t.width/2 - wb.left;
-- const ty = t.top - wb.top - 10;
-+ const ty = t.top - wb.top;  // 修正：カードの上まで到達させる
+  const ty = t.top - wb.top;
   const my = (sy + (t.top - wb.top)) / 2, r = 10;
   const v1 = `M ${sx} ${sy} L ${sx} ${my-r}`;
   const c1 = `Q ${sx} ${my} ${sx+(tx>sx? r:-r)} ${my}`;
@@ -323,7 +322,6 @@ function elbowPath(fromEl, toEl){
   const v2 = `L ${tx} ${ty}`;
   return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
-
 
 function drawWires(){
   wiresG.innerHTML = "";
@@ -387,6 +385,3 @@ document.getElementById("replay").addEventListener("click", play);
 </script>
 </body>
 </html>
-
-
-
