@@ -1,90 +1,161 @@
 <!doctype html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>No-cross Swimlane (auto-ordering)</title>
+<title>Flow Diagram (Top-Down) – Excess Capacity → 1st / 2nd / 3rd</title>
 <style>
   :root{
-    --bg:#f6f9fc; --lane:#eaf2fb; --ink:#0e5567;
-    --box:#ffffff; --boxText:#0a2b33; --line:#b9cbe3;
+    --bg:#0f1419;         /* ダーク背景（添付に寄せた雰囲気） */
+    --panel:#1c242c;
+    --wire:#f4b000;       /* 配線色：オレンジ */
+    --accent1:#f4b000;    /* 1st */
+    --accent2:#00b0b9;    /* 2nd */
+    --accent3:#bfbfc6;    /* 3rd */
+    --ink:#e8eef4;        /* 文字色 */
   }
-  html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1200px;margin:26px auto 110px;padding:0 14px;position:relative}
-  h1{font-size:18px;margin:0 0 10px}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .wrap{max-width:1200px;margin:20px auto 120px;padding:0 18px;position:relative}
 
-  /* Swimlanes（横方向に流れる列） */
-  .lanes{display:grid;grid-template-columns:1fr 1fr 1fr;gap:46px;position:relative}
-  .lane{background:var(--lane);border:1px solid var(--line);border-radius:14px;padding:22px 16px 22px;position:relative;min-height:520px}
-  .laneTitle{position:absolute;left:16px;top:-12px;background:var(--bg);padding:4px 10px;border:1px solid var(--line);border-radius:10px;font-weight:800}
-  .col{display:grid;gap:12px;align-content:start}
+  /* 章タイトル（画像の “BEFORE YOU TRADE” 的な帯） */
+  .banner{display:flex;justify-content:center;align-items:center;margin:8px 0 18px}
+  .banner span{letter-spacing:.08em;font-weight:900}
+  .banner .hi{color:var(--accent1)}
+  .banner .lo{color:#cfd6dc}
 
-  .node{
-    min-height:48px; padding:12px 14px; border-radius:12px;
-    background:var(--box); color:var(--boxText); border:1px solid #dfe7f4;
-    box-shadow:0 2px 8px rgba(0,0,0,.06);
-    font-weight:800; white-space:nowrap; opacity:0; transform:translateY(6px);
-    position:relative; z-index:2; /* 矢印より前面 */
+  /* レイヤ（縦方向に並べ、各レイヤでカードを横並び） */
+  .layers{display:grid;gap:38px;position:relative}
+  .layer{position:relative;padding:10px 10px 0}
+  .row{display:flex;gap:18px;flex-wrap:nowrap;justify-content:center}
+
+  /* カード（角丸・立体風） */
+  .card{
+    min-width:220px; max-width:280px;
+    background:linear-gradient(180deg,#222b33,#1a222a);
+    border:1px solid #2a3640; border-radius:16px;
+    padding:16px 16px 14px; position:relative; box-shadow:0 14px 28px rgba(0,0,0,.35);
   }
+  .card .cap{position:absolute;inset:8px 8px auto 8px;height:8px;border-radius:10px;
+             background:var(--band,#444)}
+  .title{font-weight:900}
+  .sub{font-size:13px;opacity:.8;margin-top:6px;line-height:1.35}
+  .tag{margin-top:8px;font-weight:900;color:#000;background:var(--band,#666);display:inline-block;padding:2px 8px;border-radius:999px}
 
-  /* SVGオーバーレイ（コネクタ） */
-  .svgLayer{position:absolute; inset:0; pointer-events:none; z-index:1}
+  /* SVG 配線 */
+  .svgLayer{position:absolute;inset:0;pointer-events:none;z-index:0}
   svg{width:100%;height:100%}
-  .link{
-    stroke:var(--ink); stroke-width:5.2; fill:none; opacity:.95; marker-end:url(#arrow);
-    stroke-dasharray:1; stroke-dashoffset:1;
-  }
-  .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-weight:700;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.16)}
+  .wire{stroke:var(--wire);stroke-width:3;fill:none;marker-end:url(#arrow);
+        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.5))}
+  .joint{fill:#d8dee6;stroke:#8a949d;stroke-width:1.2}
+
+  .replay{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);border:0;background:#2b3640;color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35)}
 </style>
 </head>
 <body>
 <div class="wrap" id="wrap">
-  <h1>No-cross Swimlane（自動並び替えで矢印が交差しない）</h1>
 
-  <div class="lanes" id="lanes">
-    <!-- 1st -->
-    <div class="lane">
-      <div class="laneTitle">1st order</div>
-      <div class="col" id="col1">
-        <div class="node" id="n1_prices">1. ↓ PRICES</div>
-        <div class="node" id="n1_export">2. ↑ EXPORT</div>
+  <div class="banner">
+    <span class="lo">BEFORE</span>&nbsp;<span class="hi">YOU</span>&nbsp;<span class="lo">ASSESS</span>
+  </div>
+
+  <div class="layers" id="layers">
+    <!-- L0: Start -->
+    <div class="layer" id="L0">
+      <div class="row">
+        <div class="card" id="start" style="--band:var(--accent1)">
+          <div class="cap"></div>
+          <div class="title">EXCESS CAPACITY</div>
+          <div class="sub">in a major market</div>
+          <div class="tag">START</div>
+        </div>
       </div>
     </div>
 
-    <!-- 2nd -->
-    <div class="lane">
-      <div class="laneTitle">2nd order</div>
-      <div class="col" id="col2">
-        <div class="node" id="n21_steelPrice">2.1 ↓ STEEL PRICES</div>
-        <div class="node" id="n22_steelGoods">2.2 ↑ STEEL-BASED GOODS</div>
-        <div class="node" id="n23_exportSqueeze">2.3 ↑ EXPORT SQUEEZE</div>
-        <div class="node" id="n24_detour">2.4 ↑ DETOUR TRADE</div>
-        <div class="node" id="n25_policy">2.5 ↑ POLICY PUSHBACK</div>
+    <!-- L1: 1st order -->
+    <div class="layer" id="L1">
+      <div class="row">
+        <div class="card" id="n1_prices" style="--band:var(--accent1)">
+          <div class="cap"></div>
+          <div class="title">↓ PRICES</div>
+          <div class="sub">First-order price reaction</div>
+          <div class="tag">1st</div>
+        </div>
+        <div class="card" id="n1_export" style="--band:var(--accent1)">
+          <div class="cap"></div>
+          <div class="title">↑ EXPORT</div>
+          <div class="sub">Push to ship out surplus</div>
+          <div class="tag">1st</div>
+        </div>
       </div>
     </div>
 
-    <!-- 3rd -->
-    <div class="lane">
-      <div class="laneTitle">3rd order</div>
-      <div class="col" id="col3">
-        <div class="node" id="n31_marketShare">3.1 ↓ MARKET SHARE</div>
-        <div class="node" id="n32_indirectExports">3.2 ↑ INDIRECT EXPORTS</div>
-        <div class="node" id="n33_indirectTrade">3.3 ↑ INDIRECT TRADE</div>
-        <div class="node" id="n34_reactionary">3.4 ↑ REACTIONARY TRADE</div>
+    <!-- L2: 2nd order -->
+    <div class="layer" id="L2">
+      <div class="row" id="row2">
+        <div class="card" id="n21_steelPrice" style="--band:var(--accent2)">
+          <div class="cap"></div>
+          <div class="title">↓ STEEL PRICES</div>
+          <div class="tag">2nd</div>
+        </div>
+        <div class="card" id="n22_steelGoods" style="--band:var(--accent2)">
+          <div class="cap"></div>
+          <div class="title">↑ STEEL-BASED GOODS</div>
+          <div class="tag">2nd</div>
+        </div>
+        <div class="card" id="n23_exportSqueeze" style="--band:var(--accent2)">
+          <div class="cap"></div>
+          <div class="title">↑ EXPORT SQUEEZE</div>
+          <div class="tag">2nd</div>
+        </div>
+        <div class="card" id="n24_detour" style="--band:var(--accent2)">
+          <div class="cap"></div>
+          <div class="title">↑ DETOUR TRADE</div>
+          <div class="tag">2nd</div>
+        </div>
+        <div class="card" id="n25_policy" style="--band:var(--accent2)">
+          <div class="cap"></div>
+          <div class="title">↑ POLICY PUSHBACK</div>
+          <div class="tag">2nd</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- L3: 3rd order -->
+    <div class="layer" id="L3">
+      <div class="row">
+        <div class="card" id="n31_marketShare" style="--band:var(--accent3)">
+          <div class="cap"></div>
+          <div class="title">↓ MARKET SHARE</div>
+          <div class="tag">3rd</div>
+        </div>
+        <div class="card" id="n32_indirectExports" style="--band:var(--accent3)">
+          <div class="cap"></div>
+          <div class="title">↑ INDIRECT EXPORTS</div>
+          <div class="tag">3rd</div>
+        </div>
+        <div class="card" id="n33_indirectTrade" style="--band:var(--accent3)">
+          <div class="cap"></div>
+          <div class="title">↑ INDIRECT TRADE</div>
+          <div class="tag">3rd</div>
+        </div>
+        <div class="card" id="n34_reactionary" style="--band:var(--accent3)">
+          <div class="cap"></div>
+          <div class="title">↑ REACTIONARY TRADE</div>
+          <div class="tag">3rd</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- connectors -->
+  <!-- SVG: コネクタ -->
   <div class="svgLayer">
     <svg id="svg">
       <defs>
-        <!-- 小さめの矢印ヘッド（6px） -->
-        <marker id="arrow" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L6,3 L0,6 Z" fill="#0e5567"/>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8" fill="var(--wire)"/>
         </marker>
       </defs>
-      <g id="links"></g>
+      <g id="wires"></g>
     </svg>
   </div>
 
@@ -93,8 +164,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* ===== 元の接続ルール ===== */
+/* ------------- 接続（これまで通りの構造） ------------- */
 const EDGES = [
+  // start → 1st
+  ["start","n1_prices"],
+  ["start","n1_export"],
   // 1st → 2nd
   ["n1_prices","n21_steelPrice"],
   ["n1_prices","n22_steelGoods"],
@@ -112,121 +186,73 @@ const EDGES = [
   ["n25_policy","n34_reactionary"]
 ];
 
-/* ===== 交差ゼロのための並び替え（barycenter） ===== */
-function reorderColumn(prevColId, thisColId, edges){
-  const prevNodes = Array.from(document.querySelectorAll(`#${prevColId} .node`)).map(n=>n.id);
-  const thisNodes = Array.from(document.querySelectorAll(`#${thisColId} .node`));
-  const parentIdx = Object.fromEntries(prevNodes.map((id,i)=>[id,i]));
-
-  // 各 thisNode の「親の平均位置」
-  const scores = thisNodes.map(n=>{
-    const parents = edges.filter(([a,b])=> b===n.id).map(([a])=> parentIdx[a]).filter(i=>i!=null);
-    const s = parents.length ? (parents.reduce((p,c)=>p+c,0)/parents.length) : 1e9;
-    return {el:n, score:s};
-  });
-
-  // スコア順に DOM を並べ替え
-  scores.sort((a,b)=>a.score-b.score).forEach(({el})=>{
-    el.parentElement.appendChild(el); // 末尾に再挿入＝並び替え
-  });
-}
-
-// 1→2、2→3 の順に適用
-function autoOrder(){
-  reorderColumn("col1","col2", EDGES);
-  // 2→3 用に 2nd→3rd のエッジだけを渡す
-  const e23 = EDGES.filter(([a,b])=> a.startsWith("n2") && b.startsWith("n3"));
-  reorderColumn("col2","col3", e23);
-}
-
-/* ===== 配線（直交：右→縦→右）。ボックス手前で停止 ===== */
+/* ------------- 直交配線（下→横→下）＆ジョイント ------------- */
 const wrap = document.getElementById("wrap");
-const linksG = document.getElementById("links");
-const START_GAP = 10, END_GAP = 10, R = 12;
+const wiresG = document.getElementById("wires");
 
-function pathBetween(fromEl, toEl){
+function elbowPath(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f = fromEl.getBoundingClientRect();
   const t = toEl.getBoundingClientRect();
 
-  const sx = f.right - wb.left + START_GAP;
-  const sy = f.top + f.height/2 - wb.top;
-  const tx = t.left - wb.left - END_GAP;
-  const ty = t.top + t.height/2 - wb.top;
+  const sx = f.left + f.width/2 - wb.left;
+  const sy = f.bottom - wb.top + 6;             // カード下から少し下へ
+  const tx = t.left + t.width/2 - wb.left;
+  const ty = t.top - wb.top - 8;                 // 目的カードの直前で停止
+  const my = (sy + (t.top - wb.top)) / 2;        // 中間水平ライン
+  const r  = 10;
 
-  // 垂直の中間線（左右の中点）
-  const mx = (sx + (t.left - wb.left)) / 2;
-
-  const h1 = `M ${sx} ${sy} L ${mx - R} ${sy}`;
-  const c1 = `Q ${mx} ${sy} ${mx} ${sy + (ty>sy? R:-R)}`;
-  const v  = `L ${mx} ${ty - (ty>sy? R:-R)}`;
-  const c2 = `Q ${mx} ${ty} ${mx + R} ${ty}`;
-  const h2 = `L ${tx} ${ty}`;
-  return `${h1} ${c1} ${v} ${c2} ${h2}`;
+  const v1 = `M ${sx} ${sy} L ${sx} ${my-r}`;
+  const c1 = `Q ${sx} ${my} ${sx+(tx>sx? r:-r)} ${my}`;
+  const h  = `L ${tx-(tx>sx? r:-r)} ${my}`;
+  const c2 = `Q ${tx} ${my} ${tx} ${my+r}`;
+  const v2 = `L ${tx} ${ty}`;
+  return `${v1} ${c1} ${h} ${c2} ${v2}`;
 }
 
-let pathEls = [];
-function drawLinks(){
-  linksG.innerHTML = ""; pathEls = [];
+function draw(){
+  wiresG.innerHTML = "";
   EDGES.forEach(([a,b])=>{
     const p = document.createElementNS("http://www.w3.org/2000/svg","path");
-    p.setAttribute("class","link");
-    p.setAttribute("d", pathBetween(document.getElementById(a), document.getElementById(b)));
-    linksG.appendChild(p); pathEls.push(p);
+    p.setAttribute("class","wire");
+    p.setAttribute("d", elbowPath(document.getElementById(a), document.getElementById(b)));
+    wiresG.appendChild(p);
+
+    // 途中の小さなジョイント（丸）を2つほど
+    const wb = wrap.getBoundingClientRect();
+    const fa = document.getElementById(a).getBoundingClientRect();
+    const ta = document.getElementById(b).getBoundingClientRect();
+    const j1 = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    j1.setAttribute("class","joint");
+    j1.setAttribute("cx", fa.left + fa.width/2 - wb.left);
+    j1.setAttribute("cy", (fa.bottom - wb.top + ta.top - wb.top)/2 - 12);
+    j1.setAttribute("r", 4.2);
+    const j2 = document.createElementNS("http://www.w3.org/2000/svg","circle");
+    j2.setAttribute("class","joint");
+    j2.setAttribute("cx", ta.left + ta.width/2 - wb.left);
+    j2.setAttribute("cy", (fa.bottom - wb.top + ta.top - wb.top)/2 + 12);
+    j2.setAttribute("r", 4.2);
+    wiresG.appendChild(j1); wiresG.appendChild(j2);
   });
 }
 
-/* ===== アニメ ===== */
+/* ------------- アニメーション ------------- */
 function prep(p){ const L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; }
 
-const nodeIds = [
-  "n1_prices","n1_export",
-  "n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy",
-  "n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"
-];
-
 function play(){
-  autoOrder();           // ← まず並び替え
-  drawLinks();           // ← その後に配線
-  const nodes = nodeIds.map(id=>document.getElementById(id));
-  gsap.set(nodes,{opacity:0,y:6});
-  pathEls.forEach(prep);
+  draw();
+  const cards = Array.from(document.querySelectorAll(".card"));
+  gsap.set(cards,{opacity:0,y:8});
+  gsap.to(cards,{opacity:1,y:0,stagger:0.06,duration:.45,ease:"power2.out"});
 
-  const tl = gsap.timeline({defaults:{ease:"power2.out"}});
-  // 1 → 2
-  tl.to("#n1_prices",{opacity:1,y:0,duration:.45})
-    .to(pathEls[0],{strokeDashoffset:0,duration:.7},"<+=0.05")
-    .to("#n21_steelPrice",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[1],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n22_steelGoods",{opacity:1,y:0,duration:.4},"<")
-
-    .to("#n1_export",{opacity:1,y:0,duration:.45},"+=0.1")
-    .to(pathEls[2],{strokeDashoffset:0,duration:.7},"<+=0.05")
-    .to("#n23_exportSqueeze",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[3],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n24_detour",{opacity:1,y:0,duration:.4},"<")
-    .to(pathEls[4],{strokeDashoffset:0,duration:.7},"-=0.2")
-    .to("#n25_policy",{opacity:1,y:0,duration:.4},"<");
-
-  // 2 → 3
-  tl.to(pathEls[5],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.1 → 3.1
-    .to("#n31_marketShare",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[6],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.1
-    .to(pathEls[7],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.2 → 3.2
-    .to("#n32_indirectExports",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[8],{strokeDashoffset:0,duration:.7},"+=0.05") // 2.3 → 3.1
-    .to(pathEls[9],{strokeDashoffset:0,duration:.7},"-=0.2")  // 2.3 → 3.2
-    .to(pathEls[10],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.3
-    .to("#n33_indirectTrade",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[11],{strokeDashoffset:0,duration:.7},"-=0.1") // 2.4 → 3.4
-    .to("#n34_reactionary",{opacity:1,y:0,duration:.45},"<")
-    .to(pathEls[12],{strokeDashoffset:0,duration:.7},"-=0.1"); // 2.5 → 3.4
+  const wires = Array.from(document.querySelectorAll(".wire"));
+  wires.forEach(prep);
+  gsap.to(wires,{strokeDashoffset:0,stagger:0.05,duration:.9,ease:"power2.out",delay:.05});
 }
 
 play();
-window.addEventListener("resize", ()=>{ play(); });  // サイズ変更時も並び替え＆再配線
+window.addEventListener("resize", draw);
 document.getElementById("replay").addEventListener("click", play);
-window.addEventListener("keydown", e=>{ if(e.code==="Space") play(); });
 </script>
 </body>
 </html>
