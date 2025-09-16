@@ -3,45 +3,66 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Top-Down Flow — Blue Theme (fixed Export→Policy→Reactionary)</title>
+<title>Top-Down Flow — compact & fixed rightmost links</title>
 <style>
   :root{
+    /* 見やすい配色 */
     --bg:#ffffff;
-    --wire:#1e40af;      /* 標準リンク色 */
-    --wire-strong:#0b61ff; /* 強調リンク色（Export→Policy / Policy→Reactionary） */
-    --b1:#2563eb; --b2:#0ea5e9; --b3:#38bdf8;
-    --text:#0b2536; --panel:#ffffff; --border:#e6eef7;
-    --shadow:0 16px 40px rgba(2,33,70,.08);
+    --text:#102236;
+
+    --b1:#1f4dd9;   /* 1st: navy blue */
+    --b2:#0fa3a9;   /* 2nd: teal      */
+    --b3:#7a5af8;   /* 3rd: purple    */
+
+    --wire:#15306b;         /* 標準リンク（濃紺） */
+    --wire-strong:#1155ff;  /* 強調リンク（ロイヤルブルー） */
+
+    --panel:#ffffff;
+    --border:#e6eef7;
+    --shadow:0 14px 32px rgba(10,41,86,.10);
   }
   html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-  .wrap{max-width:1200px;margin:24px auto 120px;padding:0 18px;position:relative}
+  .wrap{max-width:1050px;margin:70px auto 80px;padding:0 12px;position:relative}
 
-  /* 左上ボタン */
-  .replay{position:fixed;left:16px;top:16px;z-index:10;border:0;background:var(--wire);color:#fff;padding:10px 14px;border-radius:12px;font-weight:800;cursor:pointer;box-shadow:0 10px 28px rgba(30,64,175,.28);letter-spacing:.02em}
-
-  .banner{display:flex;justify-content:center;align-items:center;margin:0 0 14px}
-  .banner span{letter-spacing:.08em;font-weight:900}.banner .hi{color:var(--b1)}.banner .lo{color:#4b6373}
-
-  .layers{display:grid;gap:48px;position:relative}
-  .layer{position:relative;padding:10px 10px 0}
-  .row{display:flex;gap:20px;flex-wrap:nowrap;justify-content:center}
-
-  .card{
-    min-width:260px;max-width:320px;background:var(--panel);
-    border:1px solid var(--border);border-radius:16px;padding:16px 16px 14px;position:relative;box-shadow:var(--shadow);
-    display:grid;grid-template-columns:46px 1fr;gap:10px;align-items:center
+  /* 上中央ボタン */
+  .replay{
+    position:fixed;left:50%;top:16px;transform:translateX(-50%);
+    z-index:20;border:0;background:linear-gradient(180deg,#3060ff,#1f4dd9);
+    color:#fff;padding:10px 16px;border-radius:12px;font-weight:800;letter-spacing:.02em;
+    box-shadow:0 10px 28px rgba(17,85,255,.28); cursor:pointer
   }
-  .card .cap{position:absolute;inset:8px 8px auto 8px;height:8px;border-radius:10px;background:var(--band,#dbeafe)}
-  .title{font-weight:900}.sub{font-size:13px;opacity:.8;margin-top:2px;line-height:1.35}
-  .tag{margin-top:6px;font-weight:900;color:#073260;background:var(--band,#dbeafe);display:inline-block;padding:2px 8px;border-radius:999px}
-  .ico{width:46px;height:46px;border-radius:12px;background:#f5f9ff;display:grid;place-items:center;border:1px solid var(--border)}
-  .ico svg{width:26px;height:26px}
 
-  .svgLayer{position:absolute;inset:0;pointer-events:none;z-index:0}
-  svg{width:100%;height:100%}
-  .wire{stroke:var(--wire);stroke-width:3.2;fill:none;marker-end:url(#arrow);
-        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.18))}
-  .wire.emph{stroke:var(--wire-strong);stroke-width:4.2;filter:drop-shadow(0 2px 0 rgba(11,97,255,.25))}
+  .banner{display:flex;justify-content:center;align-items:center;margin:0 0 8px}
+  .banner span{letter-spacing:.08em;font-weight:900}
+  .banner .hi{color:var(--b1)} .banner .lo{color:#5d6f86}
+
+  /* コンパクト化：間隔を控えめに */
+  .layers{display:grid;gap:34px;position:relative}
+  .layer{position:relative;padding:6px 6px 0}
+  .row{display:flex;gap:16px;flex-wrap:nowrap;justify-content:center}
+
+  /* 小さめカード */
+  .card{
+    min-width:230px; max-width:280px;
+    background:var(--panel);
+    border:1px solid var(--border); border-radius:14px;
+    padding:14px; position:relative; box-shadow:var(--shadow);
+    display:grid; grid-template-columns:42px 1fr; gap:10px; align-items:center;
+  }
+  .card .cap{position:absolute;inset:8px 8px auto 8px;height:7px;border-radius:10px;background:var(--band,#e7efff)}
+  .title{font-weight:900}
+  .sub{font-size:12px;opacity:.8;margin-top:2px;line-height:1.3}
+  .tag{margin-top:6px;font-size:12px;font-weight:900;color:#08315f;background:var(--band,#e7efff);display:inline-block;padding:2px 8px;border-radius:999px}
+
+  .ico{width:42px;height:42px;border-radius:10px;background:#f8fbff;display:grid;place-items:center;border:1px solid var(--border)}
+  .ico svg{width:24px;height:24px}
+
+  /* SVGレイヤ：広めにとって端でも届くように（重要） */
+  .svgLayer{position:absolute;inset:-24px;pointer-events:none;z-index:0;overflow:visible}
+  svg{width:calc(100% + 48px);height:calc(100% + 48px)}
+  .wire{stroke:var(--wire);stroke-width:3;fill:none;marker-end:url(#arrow);
+        stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 1px 0 rgba(0,0,0,.15))}
+  .wire.emph{stroke:var(--wire-strong);stroke-width:4;filter:drop-shadow(0 2px 0 rgba(17,85,255,.25))}
   .joint{fill:#e2eaf5;stroke:#94a8bd;stroke-width:1.2}
 </style>
 </head>
@@ -57,7 +78,7 @@
       <div class="row">
         <div class="card" id="start" style="--band:var(--b1)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 20V9l5 3V9l5 3V8l8 4v8H3Z" stroke="var(--b1)" stroke-width="2"/><path d="M6 20v-4m3 4v-4m3 4v-4m3 4v-4m3 4v-4" stroke="#8fb6ff" stroke-width="1.5"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 20V9l5 3V9l5 3V8l8 4v8H3Z" stroke="var(--b1)" stroke-width="2"/><path d="M6 20v-4m3 4v-4m3 4v-4m3 4v-4m3 4v-4" stroke="#a9befd" stroke-width="1.4"/></svg></div>
           <div><div class="title">EXCESS CAPACITY</div><div class="sub">in a major market</div><div class="tag">START</div></div>
         </div>
       </div>
@@ -68,12 +89,12 @@
       <div class="row">
         <div class="card" id="n1_prices" style="--band:var(--b1)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 4v12m0 0l-3-3m3 3l3-3" stroke="var(--b1)" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="9" r="3.5" stroke="#8fb6ff"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M7 4v12m0 0l-3-3m3 3l3-3" stroke="var(--b1)" stroke-width="2" stroke-linecap="round"/><circle cx="15" cy="9" r="3.4" stroke="#a9befd"/></svg></div>
           <div><div class="title">↓ PRICES</div><div class="sub">First-order price reaction</div><div class="tag">1st</div></div>
         </div>
         <div class="card" id="n1_export" style="--band:var(--b1)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 14h8l2-3h8l-2 6H6l-3-3Z" stroke="var(--b1)" stroke-width="2"/><path d="M10 6l4 4M14 6l-4 4" stroke="#8fb6ff" stroke-width="1.6"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 14h8l2-3h8l-2 6H6l-3-3Z" stroke="var(--b1)" stroke-width="2"/><path d="M10 6l4 4M14 6l-4 4" stroke="#a9befd" stroke-width="1.6"/></svg></div>
           <div><div class="title">↑ EXPORT</div><div class="sub">Push to ship out surplus</div><div class="tag">1st</div></div>
         </div>
       </div>
@@ -84,27 +105,27 @@
       <div class="row" id="row2">
         <div class="card" id="n21_steelPrice" style="--band:var(--b2)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="14" height="4" rx="2" stroke="var(--b2)" stroke-width="2"/><path d="M20 6v8m0 0l-2-2m2 2l2-2" stroke="#74d6f2" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="8" width="14" height="4" rx="2" stroke="var(--b2)" stroke-width="2"/><path d="M20 6v8m0 0l-2-2m2 2l2-2" stroke="#76dbe0" stroke-width="1.6" stroke-linecap="round"/></svg></div>
           <div><div class="title">↓ STEEL PRICES</div><div class="tag">2nd</div></div>
         </div>
         <div class="card" id="n22_steelGoods" style="--band:var(--b2)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 20v-6l4 2v-3l4 2v-4l6 3v6H3Z" stroke="var(--b2)" stroke-width="2"/><circle cx="18.5" cy="8.5" r="2.5" stroke="#74d6f2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M3 20v-6l4 2v-3l4 2v-4l6 3v6H3Z" stroke="var(--b2)" stroke-width="2"/><circle cx="18.5" cy="8.5" r="2.5" stroke="#76dbe0"/></svg></div>
           <div><div class="title">↑ STEEL-BASED GOODS</div><div class="tag">2nd</div></div>
         </div>
         <div class="card" id="n23_exportSqueeze" style="--band:var(--b2)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h12v4H5z" stroke="var(--b2)" stroke-width="2"/><path d="M7 10v8m10-8v8" stroke="#74d6f2" stroke-width="2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 6h12v4H5z" stroke="var(--b2)" stroke-width="2"/><path d="M7 10v8m10-8v8" stroke="#76dbe0" stroke-width="2"/></svg></div>
           <div><div class="title">↑ EXPORT SQUEEZE</div><div class="tag">2nd</div></div>
         </div>
         <div class="card" id="n24_detour" style="--band:var(--b2)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18c8-1 2-10 14-11" stroke="var(--b2)" stroke-width="2"/><path d="M17 5l4 3-4 3" fill="#74d6f2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M5 18c8-1 2-10 14-11" stroke="var(--b2)" stroke-width="2"/><path d="M17 5l4 3-4 3" fill="#76dbe0"/></svg></div>
           <div><div class="title">↑ DETOUR TRADE</div><div class="tag">2nd</div></div>
         </div>
         <div class="card" id="n25_policy" style="--band:var(--b2)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 18h10" stroke="#74d6f2" stroke-width="2"/><path d="M9 6l5 5M11 4l5 5" stroke="var(--b2)" stroke-width="2"/><path d="M16 10l4 4" stroke="#74d6f2" stroke-width="2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 18h10" stroke="#76dbe0" stroke-width="2"/><path d="M9 6l5 5M11 4l5 5" stroke="var(--b2)" stroke-width="2"/><path d="M16 10l4 4" stroke="#76dbe0" stroke-width="2"/></svg></div>
           <div><div class="title">↑ POLICY PUSHBACK</div><div class="tag">2nd</div></div>
         </div>
       </div>
@@ -115,30 +136,29 @@
       <div class="row">
         <div class="card" id="n31_marketShare" style="--band:var(--b3)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="var(--b3)"/><path d="M12 5v7l5 5" stroke="#7bd3fb" stroke-width="2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="7" stroke="var(--b3)"/><path d="M12 5v7l5 5" stroke="#a9a0fb" stroke-width="2"/></svg></div>
           <div><div class="title">↓ MARKET SHARE</div><div class="tag">3rd</div></div>
         </div>
         <div class="card" id="n32_indirectExports" style="--band:var(--b3)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 8h8m0 0l-3-3m3 3l-3 3" stroke="var(--b3)" stroke-width="2"/><path d="M12 16h8m0 0l-3-3m3 3l-3 3" stroke="#7bd3fb" stroke-width="2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M4 8h8m0 0l-3-3m3 3l-3 3" stroke="var(--b3)" stroke-width="2"/><path d="M12 16h8m0 0l-3-3m3 3l-3 3" stroke="#a9a0fb" stroke-width="2"/></svg></div>
           <div><div class="title">↑ INDIRECT EXPORTS</div><div class="tag">3rd</div></div>
         </div>
         <div class="card" id="n33_indirectTrade" style="--band:var(--b3)">
           <div class="cap"></div>
-          <div class="ico">
-            <!-- 車アイコン -->
+          <div class="ico"><!-- 車 -->
             <svg viewBox="0 0 24 24" fill="none">
               <path d="M4 15l2-4a3 3 0 012.7-1.6h6.6A3 3 0 0118 11l2 4" stroke="var(--b3)" stroke-width="2" stroke-linejoin="round"/>
-              <circle cx="8" cy="16.5" r="1.7" stroke="#7bd3fb" stroke-width="1.6"/>
-              <circle cx="16" cy="16.5" r="1.7" stroke="#7bd3fb" stroke-width="1.6"/>
-              <path d="M3 16.5h2m14 0h2" stroke="#7bd3fb" stroke-width="1.6" stroke-linecap="round"/>
+              <circle cx="8" cy="16.5" r="1.7" stroke="#a9a0fb" stroke-width="1.6"/>
+              <circle cx="16" cy="16.5" r="1.7" stroke="#a9a0fb" stroke-width="1.6"/>
+              <path d="M3 16.5h2m14 0h2" stroke="#a9a0fb" stroke-width="1.6" stroke-linecap="round"/>
             </svg>
           </div>
           <div><div class="title">↑ INDIRECT TRADE</div><div class="tag">3rd</div></div>
         </div>
         <div class="card" id="n34_reactionary" style="--band:var(--b3)">
           <div class="cap"></div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4Z" stroke="var(--b3)" stroke-width="2"/><path d="M12 9v5M12 18v.5" stroke="#7bd3fb" stroke-width="2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4Z" stroke="var(--b3)" stroke-width="2"/><path d="M12 9v5M12 18v.5" stroke="#a9a0fb" stroke-width="2"/></svg></div>
           <div><div class="title">↑ REACTIONARY TRADE</div><div class="tag">3rd</div></div>
         </div>
       </div>
@@ -160,112 +180,101 @@
 
 <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
 <script>
-/* すべての接続。最後の2本を「強調」扱いにする */
+/* すべての接続（右端の2本を強調） */
 const EDGES = [
-  // L0→L1
   ["start","n1_prices"], ["start","n1_export"],
-  // L1→L2（ここに Export→Policy Pushback を含む）
   ["n1_prices","n21_steelPrice"], ["n1_prices","n22_steelGoods"],
   ["n1_export","n23_exportSqueeze"], ["n1_export","n24_detour"],
-  ["n1_export","n25_policy"], // ★ Export → Policy Pushback（強調対象その1）
-  // L2→L3（ここに Policy Pushback→Reactionary を含む）
+  ["n1_export","n25_policy"], /* ★ Export→Policy Pushback */
   ["n21_steelPrice","n31_marketShare"],
   ["n22_steelGoods","n31_marketShare"], ["n22_steelGoods","n32_indirectExports"],
   ["n23_exportSqueeze","n31_marketShare"], ["n23_exportSqueeze","n32_indirectExports"],
   ["n24_detour","n33_indirectTrade"], ["n24_detour","n34_reactionary"],
-  ["n25_policy","n34_reactionary"] // ★ Policy Pushback → Reactionary（強調対象その2）
+  ["n25_policy","n34_reactionary"]  /* ★ Policy→Reactionary */
 ];
-
-const EMPH_KEYS = new Set([
-  "n1_export=>n25_policy",
-  "n25_policy=>n34_reactionary"
-]);
+const EMPH_KEYS = new Set(["n1_export=>n25_policy","n25_policy=>n34_reactionary"]);
 
 const wrap = document.getElementById("wrap");
 const wiresG = document.getElementById("wires");
 
-/* 下→横→下（カード直前で停止） */
+/* 下→横→下（終点はカード直前で停止） */
+const START_GAP=8, END_GAP=6, R=10;
 function elbowPath(fromEl, toEl){
   const wb = wrap.getBoundingClientRect();
   const f = fromEl.getBoundingClientRect();
   const t = toEl.getBoundingClientRect();
   const sx = f.left + f.width/2 - wb.left;
-  const sy = f.bottom - wb.top + 8;
+  const sy = f.bottom - wb.top + START_GAP;
   const tx = t.left + t.width/2 - wb.left;
-  const ty = t.top - wb.top - 10;
-  const my = (sy + (t.top - wb.top)) / 2, r = 10;
-  return `M ${sx} ${sy} L ${sx} ${my-r} Q ${sx} ${my} ${sx+(tx>sx? r:-r)} ${my} L ${tx-(tx>sx? r:-r)} ${my} Q ${tx} ${my} ${tx} ${my+r} L ${tx} ${ty}`;
+  const ty = t.top - wb.top - END_GAP;
+  const my = (sy + (t.top - wb.top)) / 2;
+  return `M ${sx} ${sy} L ${sx} ${my-R} Q ${sx} ${my} ${sx+(tx>sx? R:-R)} ${my} L ${tx-(tx>sx? R:-R)} ${my} Q ${tx} ${my} ${tx} ${my+R} L ${tx} ${ty}`;
 }
 
-let pathEls = [];
+let pathEls=[];
 function drawWires(){
-  wiresG.innerHTML = ""; pathEls = [];
-  // まず通常線、そのあと強調線を描く（上に乗せる）
-  const normal = EDGES.filter(([a,b])=> !EMPH_KEYS.has(`${a}=>${b}`));
-  const emph   = EDGES.filter(([a,b])=>  EMPH_KEYS.has(`${a}=>${b}`));
-  function addEdge([a,b], emphClass=false){
-    const p = document.createElementNS("http://www.w3.org/2000/svg","path");
+  wiresG.innerHTML=""; pathEls=[];
+  const normal = EDGES.filter(([a,b])=>!EMPH_KEYS.has(`${a}=>${b}`));
+  const emph   = EDGES.filter(([a,b])=> EMPH_KEYS.has(`${a}=>${b}`));
+
+  function add([a,b], emphClass=false){
+    const p=document.createElementNS("http://www.w3.org/2000/svg","path");
     p.setAttribute("class","wire"+(emphClass?" emph":""));
-    p.setAttribute("d", elbowPath(document.getElementById(a), document.getElementById(b)));
-    p.dataset.key = `${a}=>${b}`;
+    p.setAttribute("d",elbowPath(document.getElementById(a),document.getElementById(b)));
+    p.dataset.key=`${a}=>${b}`;
     wiresG.appendChild(p);
-    // ジョイント
-    const wb = wrap.getBoundingClientRect();
-    const fa = document.getElementById(a).getBoundingClientRect();
-    const ta = document.getElementById(b).getBoundingClientRect();
-    const cy = (fa.bottom - wb.top + ta.top - wb.top)/2;
-    [ [fa.left+fa.width/2 - wb.left, cy-12], [ta.left+ta.width/2 - wb.left, cy+12] ].forEach(([cx,cy2])=>{
-      const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+
+    // ジョイント2点
+    const wb=wrap.getBoundingClientRect();
+    const fa=document.getElementById(a).getBoundingClientRect();
+    const ta=document.getElementById(b).getBoundingClientRect();
+    const cy=(fa.bottom-wb.top+ta.top-wb.top)/2;
+    [[fa.left+fa.width/2-wb.left, cy-12],[ta.left+ta.width/2-wb.left, cy+12]].forEach(([cx,cy2])=>{
+      const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
       c.setAttribute("class","joint"); c.setAttribute("cx",cx); c.setAttribute("cy",cy2); c.setAttribute("r","4.2");
       wiresG.appendChild(c);
     });
     pathEls.push(p);
   }
-  normal.forEach(e=>addEdge(e,false));
-  emph.forEach(e=>addEdge(e,true)); // 強調線を最後に
+  normal.forEach(e=>add(e,false));
+  emph.forEach(e=>add(e,true)); // 強調線は最後に上へ
 }
 
-function prep(p){ const L=p.getTotalLength(); p.style.strokeDasharray=L; p.style.strokeDashoffset=L; }
+function prep(p){const L=p.getTotalLength();p.style.strokeDasharray=L;p.style.strokeDashoffset=L;}
 
-/* ゆっくり・左→右：各レイヤでカード→配線の順に */
+/* ゆっくり・左→右順で表示 */
 function play(){
   drawWires();
 
-  const L0 = [document.getElementById("start")];
-  const L1 = ["n1_prices","n1_export"].map(id=>document.getElementById(id));
-  const L2 = ["n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy"].map(id=>document.getElementById(id));
-  const L3 = ["n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"].map(id=>document.getElementById(id));
+  const L0=[document.getElementById("start")];
+  const L1=["n1_prices","n1_export"].map(id=>document.getElementById(id));
+  const L2=["n21_steelPrice","n22_steelGoods","n23_exportSqueeze","n24_detour","n25_policy"].map(id=>document.getElementById(id));
+  const L3=["n31_marketShare","n32_indirectExports","n33_indirectTrade","n34_reactionary"].map(id=>document.getElementById(id));
 
-  const wires = Array.from(document.querySelectorAll(".wire"));
+  const wires=Array.from(document.querySelectorAll(".wire"));
   wires.forEach(prep);
 
-  const tl = gsap.timeline({defaults:{ease:"power1.out"}});
-  const showCards = (arr, st=.55, dur=.9)=> tl.to(arr,{opacity:1,y:0,stagger:st,duration:dur});
+  const tl=gsap.timeline({defaults:{ease:"power1.out"}});
+  const show=(arr,st=.45,d=.8)=>tl.to(arr,{opacity:1,y:0,stagger:st,duration:d});
 
-  // L0 → 1stへの線（2本）
-  gsap.set([ ...L0, ...L1, ...L2, ...L3 ], {opacity:0,y:12});
-  showCards(L0, .55, .95);
-  tl.to(wires.filter(w=>w.dataset.key==="start=>n1_prices"||w.dataset.key==="start=>n1_export"),
-        {strokeDashoffset:0,stagger:.7,duration:1.8}, "+=0.25");
+  gsap.set([...L0,...L1,...L2,...L3],{opacity:0,y:10});
+  show(L0,.5,.9);
+  tl.to(wires.filter(w=>["start=>n1_prices","start=>n1_export"].includes(w.dataset.key)),
+        {strokeDashoffset:0,stagger:.6,duration:1.5}, "+=0.2");
 
-  // L1（左→右） → L2への線（左→右、Export→Policy を含む）
-  showCards(L1, .6, .95);
-  const w12 = ["n1_prices=>n21_steelPrice","n1_prices=>n22_steelGoods","n1_export=>n23_exportSqueeze","n1_export=>n24_detour","n1_export=>n25_policy"];
-  tl.to(wires.filter(w=>w12.includes(w.dataset.key)), {strokeDashoffset:0,stagger:.65,duration:1.9}, "+=0.3");
+  show(L1,.5,.9);
+  const w12=["n1_prices=>n21_steelPrice","n1_prices=>n22_steelGoods","n1_export=>n23_exportSqueeze","n1_export=>n24_detour","n1_export=>n25_policy"];
+  tl.to(wires.filter(w=>w12.includes(w.dataset.key)),
+        {strokeDashoffset:0,stagger:.55,duration:1.6}, "+=0.25");
 
-  // L2（左→右）
-  showCards(L2, .5, 1.0);
-  const w23 = [
-    "n21_steelPrice=>n31_marketShare",
-    "n22_steelGoods=>n31_marketShare","n22_steelGoods=>n32_indirectExports",
-    "n23_exportSqueeze=>n31_marketShare","n23_exportSqueeze=>n32_indirectExports",
-    "n24_detour=>n33_indirectTrade","n24_detour=>n34_reactionary",
-    "n25_policy=>n34_reactionary" // ★ 強調
-  ];
-  tl.to(wires.filter(w=>w23.includes(w.dataset.key)), {strokeDashoffset:0,stagger:.65,duration:1.9}, "+=0.3");
+  show(L2,.45,1.0);
+  const w23=["n21_steelPrice=>n31_marketShare","n22_steelGoods=>n31_marketShare","n22_steelGoods=>n32_indirectExports",
+             "n23_exportSqueeze=>n31_marketShare","n23_exportSqueeze=>n32_indirectExports",
+             "n24_detour=>n33_indirectTrade","n24_detour=>n34_reactionary","n25_policy=>n34_reactionary"];
+  tl.to(wires.filter(w=>w23.includes(w.dataset.key)),
+        {strokeDashoffset:0,stagger:.55,duration:1.6}, "+=0.25");
 
-  // L3（左→右）
-  showCards(L3, .45, .95);
+  show(L3,.4,.9);
 }
 
 play();
