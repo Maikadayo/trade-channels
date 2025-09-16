@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Excess Capacity → 1st/2nd/3rd order impact (animated)</title>
+<style>
+  :root { --bg:#f6fbff; --ink:#0e5567; --chip:#cfe6ff; --text:#082a34; }
+  html,body{height:100%;margin:0;background:var(--bg);font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;color:var(--text)}
+  .wrap{max-width:1100px;margin:32px auto;padding:20px}
+  h1{font-size:18px;margin:0 0 12px}
+  .grid{display:grid;grid-template-columns:220px 1fr 1fr 1fr;gap:16px;align-items:start}
+  .colTitle{font-weight:700;border:2px solid #000;padding:6px 10px;border-radius:8px;background:#fff;justify-self:start}
+  .chip{display:inline-flex;align-items:center;gap:.5rem;background:var(--chip);padding:10px 12px;border-radius:10px;font-weight:700;opacity:0;transform:translateY(6px)}
+  .small{font-size:14px}
+  .stack{display:grid;gap:14px}
+  /* SVG path drawing setup */
+  svg{width:100%;height:540px;margin-top:8px;overflow:visible}
+  .arrow{stroke:var(--ink);stroke-width:18;fill:none;stroke-linecap:round;stroke-linejoin:round;
+         stroke-dasharray:1;stroke-dashoffset:1;opacity:.9}
+  .arrowThin{stroke-width:12}
+  .pulse{filter: drop-shadow(0 1px 0 rgba(0,0,0,.1))}
+  .label{font-weight:800;fill:#0b3c49}
+  .note{fill:#0b3c49;font-size:12px;font-weight:700}
+  .box{fill:#dff0ff;stroke:#0e5567;stroke-width:2}
+  .tag{font-weight:800}
+  .replay{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);border:0;background:#0e5567;color:#fff;
+          padding:10px 16px;border-radius:12px;cursor:pointer;font-weight:700;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>過剰供給 → 1st / 2nd / 3rd order impact（アニメーション例）</h1>
+
+  <div class="grid">
+    <div></div>
+    <div class="colTitle">1st order<br>impact</div>
+    <div class="colTitle">2nd order<br>impact</div>
+    <div class="colTitle">3rd order<br>impact</div>
+  </div>
+
+  <!-- タグ（テキストチップ） -->
+  <div class="grid" style="margin-top:8px">
+    <div class="stack">
+      <div class="chip" id="cap"><span class="tag">Excess capacity in a major market</span></div>
+    </div>
+    <div class="stack">
+      <div class="chip" id="prices">⬇︎ PRICES</div>
+      <div class="chip" id="export">⬆︎ EXPORT</div>
+    </div>
+    <div class="stack">
+      <div class="chip small" id="steelPrices">⬇︎ STEEL PRICES</div>
+      <div class="chip small" id="steelGoods">⬆︎ STEEL-BASED GOODS</div>
+      <div class="chip small" id="exportSq">⬆︎ EXPORT SQUEEZE</div>
+      <div class="chip small" id="detour">⬆︎ DETOUR TRADE</div>
+      <div class="chip small" id="policy">⬆︎ POLICY PUSHBACK</div>
+    </div>
+    <div class="stack">
+      <div class="chip small" id="marketShare">⬇︎ MARKET SHARE</div>
+      <div class="chip small" id="indirectEx">⬆︎ INDIRECT EXPORTS</div>
+      <div class="chip small" id="indirectTrade">⬆︎ INDIRECT TRADE</div>
+      <div class="chip small" id="reactionary">⬆︎ REACTIONARY TRADE</div>
+    </div>
+  </div>
+
+  <!-- 図形と矢印（SVG） -->
+  <svg viewBox="0 0 1100 540" id="scene" aria-label="flow">
+    <defs>
+      <marker id="arrowHead" orient="auto-start-reverse" markerWidth="12" markerHeight="12" refX="6" refY="6">
+        <path d="M0,0 L12,6 L0,12 Z" fill="#0e5567"/>
+      </marker>
+    </defs>
+
+    <!-- 位置の目印（透明ボックス）: ラベルの近くに合わせた座標 -->
+    <g id="anchors" opacity="0">
+      <rect class="box" x="10" y="10" width="210" height="80"></rect>
+      <text x="20" y="58" class="label">Excess capacity</text>
+    </g>
+
+    <!-- 矢印（おおまかなレイアウト） -->
+    <!-- 左縦 → 1st「PRICES」 -->
+    <path class="arrow" marker-end="url(#arrowHead)"
+          d="M120,120 C120,180 300,180 360,180" id="a1"/>
+
+    <!-- PRICES → steelPrices / steelGoods -->
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M520,180 C560,180 630,120 740,120" id="a2"/>
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M520,200 C560,240 630,260 740,260" id="a3"/>
+
+    <!-- 左縦 → EXPORT -->
+    <path class="arrow" marker-end="url(#arrowHead)"
+          d="M120,120 C120,320 300,320 360,320" id="a4"/>
+
+    <!-- EXPORT → export squeeze / detour / policy -->
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M520,320 C620,320 640,340 740,340" id="a5"/>
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M520,370 C600,370 660,420 740,420" id="a6"/>
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M520,420 C590,420 640,500 740,500" id="a7"/>
+
+    <!-- 2nd → 3rd -->
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M900,120 C980,120 1020,120 1060,120" id="a8"/>
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M900,260 C980,260 1020,220 1060,220" id="a9"/>
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M900,340 C980,340 1020,340 1060,340" id="a10"/>
+    <path class="arrowThin" marker-end="url(#arrowHead)"
+          d="M900,500 C980,500 1020,460 1060,460" id="a11"/>
+  </svg>
+
+  <button class="replay" id="replay">▶︎ もう一度再生</button>
+</div>
+
+<!-- GSAP CDN -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script>
+  // ユーティリティ：path を「描いていく」ための長さセット
+  const prepDraw = p => {
+    const len = p.getTotalLength();
+    p.style.strokeDasharray = len;
+    p.style.strokeDashoffset = len;
+    return len;
+  };
+  const arrows = ["a1","a2","a3","a4","a5","a6","a7","a8","a9","a10","a11"].map(id=>document.getElementById(id));
+  arrows.forEach(prepDraw);
+
+  const chips = ["cap","prices","export","steelPrices","steelGoods","exportSq","detour","policy","marketShare","indirectEx","indirectTrade","reactionary"]
+    .map(id=>document.getElementById(id));
+
+  function play(){
+    gsap.set(chips, {opacity:0, y:6});
+    gsap.set(arrows, {strokeDashoffset:(i,t)=>t.style.strokeDasharray});
+
+    const tl = gsap.timeline({defaults:{ease:"power2.out"}});
+    // 入口
+    tl.to("#cap",{opacity:1,y:0,duration:.5});
+    // 1st order
+    tl.to("#a1",{strokeDashoffset:0,duration:0.9}, "+=0.1")
+      .to("#prices",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a4",{strokeDashoffset:0,duration:0.9}, "-=0.2")
+      .to("#export",{opacity:1,y:0,duration:.5}, "<");
+
+    // 2nd order
+    tl.to("#a2",{strokeDashoffset:0,duration:.8}, "+=0.1")
+      .to("#steelPrices",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a3",{strokeDashoffset:0,duration:.8}, "-=0.2")
+      .to("#steelGoods",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a5",{strokeDashoffset:0,duration:.8}, "-=0.1")
+      .to("#exportSq",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a6",{strokeDashoffset:0,duration:.8}, "-=0.2")
+      .to("#detour",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a7",{strokeDashoffset:0,duration:.8}, "-=0.2")
+      .to("#policy",{opacity:1,y:0,duration:.5}, "<");
+
+    // 3rd order
+    tl.to("#a8",{strokeDashoffset:0,duration:.8}, "+=0.1")
+      .to("#marketShare",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a9",{strokeDashoffset:0,duration:.8}, "-=0.2")
+      .to("#indirectEx",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a10",{strokeDashoffset:0,duration:.8}, "-=0.2")
+      .to("#indirectTrade",{opacity:1,y:0,duration:.5}, "<")
+      .to("#a11",{strokeDashoffset:0,duration:.8}, "-=0.2")
+      .to("#reactionary",{opacity:1,y:0,duration:.5}, "<");
+
+    // ちょいパルス
+    tl.to(["#prices","#export","#marketShare","#indirectEx","#indirectTrade","#reactionary"],
+          {scale:1.03,yoyo:true,repeat:1,transformOrigin:"50% 50%",duration:.18,stagger:.04}, "-=0.1");
+  }
+  play();
+  document.getElementById('replay').addEventListener('click', play);
+  window.addEventListener('keydown', e=>{ if(e.code==='Space') play(); });
+</script>
+</body>
+</html>
