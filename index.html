@@ -288,13 +288,18 @@
 /* 接続（これまで通り） */
 const EDGES = [
   ["start","n1_prices"], ["start","n1_export"],
+
+  // 1st → 2nd
   ["n1_prices","n21_steelPrice"], ["n1_prices","n22_steelGoods"],
-  ["n1_export","n23_exportSqueeze"], ["n1_export","n24_detour"], ["n1_export","n25_policy"],
+  ["n1_export","n23_exportSqueeze"], ["n1_export","n24_detour"],
+  ["n1_export","n25_policy"],          // ← ① 追加：EXPORT → POLICY PUSHBACK
+
+  // 2nd → 3rd
   ["n21_steelPrice","n31_marketShare"],
   ["n22_steelGoods","n31_marketShare"], ["n22_steelGoods","n32_indirectExports"],
   ["n23_exportSqueeze","n31_marketShare"], ["n23_exportSqueeze","n32_indirectExports"],
   ["n24_detour","n33_indirectTrade"], ["n24_detour","n34_reactionary"],
-  ["n25_policy","n34_reactionary"]
+  ["n25_policy","n34_reactionary"]     // ← ② 追加：POLICY PUSHBACK → REACTIONARY TRADE
 ];
 
 const wrap = document.getElementById("wrap");
@@ -380,3 +385,4 @@ document.getElementById("replay").addEventListener("click", play);
 </script>
 </body>
 </html>
+
