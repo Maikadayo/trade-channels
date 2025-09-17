@@ -82,6 +82,32 @@
     border:0;background:#2b3640;color:#fff;padding:10px 16px;border-radius:12px;
     font-weight:800;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35)
   }
+/* === 2nd / 3rd を横一列に。少しコンパクト化 === */
+
+/* 余裕を持たせて中央カラムを少し広げる */
+.wrap{ max-width:1200px; }
+
+/* L2(2nd) と L3(3rd) は折り返さず横並び */
+#L2 .row, #L3 .row{
+  flex-wrap: nowrap;
+  justify-content: center;
+  gap:14px;                 /* 隙間を少し詰める */
+}
+
+/* カードを少しだけ小ぶりに（横に収めるため） */
+#L2 .card{ min-width:220px; padding:14px 14px 12px; }
+#L3 .card{ min-width:230px; padding:14px 14px 12px; }
+
+/* アイコンも微縮小 */
+#L2 .ico, #L3 .ico{ width:42px; height:42px; }
+#L2 .ico svg, #L3 .ico svg{ width:24px; height:24px; }
+
+/* 画面が狭い時は折り返しOK（レスポンシブ） */
+@media (max-width: 1100px){
+  #L2 .row, #L3 .row{ flex-wrap: wrap; }
+}
+
+  
 </style>
 
 
@@ -430,6 +456,7 @@ init();
 
 </body>
 </html>
+
 
 
 
