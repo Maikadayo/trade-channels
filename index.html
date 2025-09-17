@@ -509,7 +509,7 @@ function openPopover(anchorEl, titleText, bodyText){
   pop.setAttribute("aria-modal","false");
 
   const safeTitle = titleText || "Details";
-  const safeBody  = (bodyText && bodyText.trim()) ? bodyText.trim() : "（説明は未設定です）";
+  const safeBody  = (bodyText && bodyText.trim()) ? bodyText.trim() : "";
 
   pop.innerHTML = `
     <button class="pop-close" aria-label="閉じる" onclick="closePopover()">×</button>
@@ -593,6 +593,7 @@ if (document.readyState === "loading"){
 
 </body>
 </html>
+
 
 
 
