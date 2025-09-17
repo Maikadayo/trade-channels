@@ -106,40 +106,43 @@
 @media (max-width: 1100px){
   #L2 .row, #L3 .row{ flex-wrap: wrap; }
 }
-/* 簡易ポップアップ用 */
-.textbox-popup {
-  position:absolute;
-  top:50%; left:50%;
-  transform:translate(-50%,-50%);
-  background:#1c242c;
-  padding:20px;
-  border:1px solid #2a3640;
-  border-radius:12px;
-  color:#fff;
-  z-index:100;
-  box-shadow:0 10px 30px rgba(0,0,0,0.6);
+/* ========== アイコン用ポップオーバー ========== */
+.popover {
+  position: absolute;
+  max-width: 320px;
+  width: max(260px, 22vw);
+  background: #1c242c;
+  color: #e8eef4;
+  border: 1px solid #2a3640;
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.5);
+  padding: 12px 14px;
+  z-index: 20;
+  pointer-events: auto; /* クリック可能 */
+  opacity: 0; transform: translateY(4px); transition: .16s ease;
 }
-.textbox-popup textarea{
-  width:260px;
-  height:120px;
-  padding:10px;
-  border-radius:8px;
-  border:none;
-  background:#222b33;
-  color:#fff;
-  resize:none;
-}
-.textbox-popup button{
-  margin-top:10px;
-  padding:6px 12px;
-  border:none;
-  border-radius:8px;
-  background:#f4b000;
-  color:#000;
-  font-weight:bold;
-  cursor:pointer;
+.popover.show { opacity: 1; transform: translateY(0); }
+
+.popover .pop-title { font-weight: 900; margin: 2px 22px 6px 2px; }
+.popover .pop-body  { font-size: 14px; line-height: 1.5; opacity: .9; }
+
+.popover .pop-close{
+  position:absolute; right:8px; top:6px;
+  width:24px; height:24px; border:0; border-radius:6px;
+  background:#2b3640; color:#fff; cursor:pointer; font-weight:900;
 }
 
+.popover::after{ /* 上向きの三角 */
+  content:""; position:absolute; width:0; height:0;
+  border-left:8px solid transparent; border-right:8px solid transparent;
+  border-top:8px solid #1c242c; bottom:-8px; left:24px;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.6));
+}
+.popover[data-pos="above"]::after{  /* 下向きに切り替え */
+  border-top:none;
+  border-bottom:8px solid #1c242c;
+  top:-8px; bottom:auto;
+}
 
   
 </style>
@@ -488,19 +491,101 @@ function init(){
 }
 
 init();
-function showTextbox(cardId){
-  // 既に出ていれば消す
-  const old = document.querySelector(".textbox-popup");
-  if(old) old.remove();
+const POP_ID = "icon-popover";
 
-  // 新しいポップアップを生成
-  const popup = document.createElement("div");
-  popup.className = "textbox-popup";
-  popup.innerHTML = `
-    <textarea placeholder="ここに入力できます..."></textarea><br>
-    <button onclick="this.parentElement.remove()">閉じる</button>
+/** ポップオーバーを開く（既存があれば置き換え） */
+function openPopover(anchorEl, titleText, bodyText){
+  closePopover(); // 一旦閉じる
+
+  // ラッパー基準で位置を計算
+  const wb = wrap.getBoundingClientRect();
+  const r  = anchorEl.getBoundingClientRect();
+
+  // 要素生成
+  const pop = document.createElement("div");
+  pop.className = "popover";
+  pop.id = POP_ID;
+  pop.setAttribute("role","dialog");
+  pop.setAttribute("aria-modal","false");
+
+  const safeTitle = titleText || "Details";
+  const safeBody  = (bodyText && bodyText.trim()) ? bodyText.trim() : "（説明は未設定です）";
+
+  pop.innerHTML = `
+    <button class="pop-close" aria-label="閉じる" onclick="closePopover()">×</button>
+    <div class="pop-title">${safeTitle}</div>
+    <div class="pop-body">${safeBody}</div>
   `;
-  document.body.appendChild(popup);
+
+  // wrap に追加して座標を決める
+  wrap.appendChild(pop);
+
+  // デフォルトは「アイコンの下」に出す。スペースがなければ上に。
+  const margin = 10;
+  const preferBelowTop = r.bottom - wb.top + margin;
+  const preferLeft     = r.left   - wb.left;
+
+  // はみ出し補正
+  let left = Math.max(8, Math.min(preferLeft, wb.width - pop.offsetWidth - 8));
+  let top  = preferBelowTop;
+
+  // 下側にスペースが足りない → 上に出す
+  if (top + pop.offsetHeight > wb.height - 8) {
+    top = r.top - wb.top - pop.offsetHeight - margin;
+    pop.dataset.pos = "above";
+  }
+
+  pop.style.left = `${left}px`;
+  pop.style.top  = `${top}px`;
+
+  requestAnimationFrame(()=> pop.classList.add("show"));
+
+  // 外側クリック & ESC で閉じる
+  document.addEventListener("click", outsideClose, {capture:true});
+  document.addEventListener("keydown", escClose);
+  function outsideClose(e){
+    if (!pop.contains(e.target) && !anchorEl.contains(e.target)) closePopover();
+  }
+  function escClose(e){ if (e.key === "Escape") closePopover(); }
+  // 後始末を保存
+  pop._cleanup = ()=>{
+    document.removeEventListener("click", outsideClose, {capture:true});
+    document.removeEventListener("keydown", escClose);
+  };
+}
+
+/** ポップオーバーを閉じる */
+function closePopover(){
+  const pop = document.getElementById(POP_ID);
+  if (!pop) return;
+  pop.classList.remove("show");
+  const cleanup = pop._cleanup;
+  setTimeout(()=> { if (cleanup) cleanup(); pop.remove(); }, 120);
+}
+
+/** すべての .ico にハンドラ付与（カードクリックに波及しないよう停止） */
+function bindIconPopovers(){
+  document.querySelectorAll(".ico").forEach(ico=>{
+    ico.style.pointerEvents = "auto";
+    ico.addEventListener("click", (e)=>{
+      e.stopPropagation();                        // 線描画用のカードクリックに伝播させない
+      const card  = ico.closest(".card");
+      const title = card?.querySelector(".title")?.textContent?.trim() || "";
+      const tip   = ico.getAttribute("data-tip") || "";
+      openPopover(ico, title, tip);
+    });
+  });
+
+  // レイアウト変化で位置がズレたら閉じる（簡易対処）
+  window.addEventListener("resize", closePopover, {passive:true});
+  window.addEventListener("scroll", closePopover, {passive:true});
+}
+
+// 既存の init() があればその後に呼ばれるように
+if (document.readyState === "loading"){
+  document.addEventListener("DOMContentLoaded", bindIconPopovers);
+} else {
+  bindIconPopovers();
 }
 </script>
 
@@ -508,6 +593,7 @@ function showTextbox(cardId){
 
 </body>
 </html>
+
 
 
 
