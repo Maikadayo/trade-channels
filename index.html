@@ -106,6 +106,40 @@
 @media (max-width: 1100px){
   #L2 .row, #L3 .row{ flex-wrap: wrap; }
 }
+/* 簡易ポップアップ用 */
+.textbox-popup {
+  position:absolute;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:#1c242c;
+  padding:20px;
+  border:1px solid #2a3640;
+  border-radius:12px;
+  color:#fff;
+  z-index:100;
+  box-shadow:0 10px 30px rgba(0,0,0,0.6);
+}
+.textbox-popup textarea{
+  width:260px;
+  height:120px;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+  background:#222b33;
+  color:#fff;
+  resize:none;
+}
+.textbox-popup button{
+  margin-top:10px;
+  padding:6px 12px;
+  border:none;
+  border-radius:8px;
+  background:#f4b000;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+}
+
 
   
 </style>
@@ -269,18 +303,22 @@
         </div>
 
         <div class="card" id="n32_indirectExports" style="--band:var(--accent3)">
-          <div class="cap"></div>
-          <div class="ico" aria-hidden="true">
-            <!-- route arrows -->
-            <svg viewBox="0 0 24 24" fill="none">
-              <path d="M4 8h8m0 0l-3-3m3 3l-3 3" stroke="#bfbfc6" stroke-width="2"/>
-              <path d="M12 16h8m0 0l-3-3m3 3l-3 3" stroke="#9ea3aa" stroke-width="2"/>
-            </svg>
-          </div>
-          <div>
-            <div class="title">↑ INDIRECT EXPORTS</div>
-          </div>
-        </div>
+  <div class="cap"></div>
+  <div class="ico" aria-hidden="true" onclick="showTextbox('n32_indirectExports')">
+    <!-- car icon -->
+    <svg viewBox="0 0 24 24" fill="none" stroke="#bfbfc6" stroke-width="2">
+      <rect x="3" y="11" width="18" height="5" rx="1.5"/>
+      <circle cx="7" cy="17" r="2"/>
+      <circle cx="17" cy="17" r="2"/>
+      <path d="M5 11l1.5-4h11L19 11" stroke="#9ea3aa" stroke-width="2"/>
+    </svg>
+  </div>
+  <div>
+    <div class="title">↑ INDIRECT EXPORTS</div>
+  </div>
+</div>
+
+
 
         <div class="card" id="n33_indirectTrade" style="--band:var(--accent3)">
           <div class="cap"></div>
@@ -450,12 +488,27 @@ function init(){
 }
 
 init();
+function showTextbox(cardId){
+  // 既に出ていれば消す
+  const old = document.querySelector(".textbox-popup");
+  if(old) old.remove();
+
+  // 新しいポップアップを生成
+  const popup = document.createElement("div");
+  popup.className = "textbox-popup";
+  popup.innerHTML = `
+    <textarea placeholder="ここに入力できます..."></textarea><br>
+    <button onclick="this.parentElement.remove()">閉じる</button>
+  `;
+  document.body.appendChild(popup);
+}
 </script>
 
 
 
 </body>
 </html>
+
 
 
 
